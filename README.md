@@ -44,7 +44,7 @@ A family meal planning and recipe management app built with React, TypeScript, V
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `VITE_CONVEX_URL` | Your Convex deployment URL (e.g., `https://your-deployment.convex.cloud`) | Yes (build time) |
+| `VITE_CONVEX_URL` | Your Convex deployment URL (e.g., `https://your-deployment.convex.cloud`) | Yes (runtime) |
 | `GITHUB_REPOSITORY` | GitHub repository name for pulling images (e.g., `username/recipes`) | Yes (production) |
 | `IMAGE_TAG` | Docker image tag to deploy (default: `latest`) | No |
 | `PORT` | Host port to expose the app (default: `3000`) | No |
@@ -70,6 +70,7 @@ For production deployments, pull the pre-built image:
 
 1. Create a `.env` file:
    ```bash
+   VITE_CONVEX_URL=https://your-deployment.convex.cloud
    GITHUB_REPOSITORY=your-username/recipes
    IMAGE_TAG=latest
    PORT=3000
@@ -84,13 +85,7 @@ For production deployments, pull the pre-built image:
 
 The repository includes a GitHub Actions workflow that automatically builds and pushes Docker images to GitHub Container Registry (ghcr.io).
 
-#### Required Secrets
-
-Add these secrets in your GitHub repository settings (Settings > Secrets and variables > Actions):
-
-| Secret | Description |
-|--------|-------------|
-| `VITE_CONVEX_URL` | Your Convex deployment URL |
+No secrets are required - the `VITE_CONVEX_URL` is configured at runtime when starting the container.
 
 The `GITHUB_TOKEN` is automatically provided by GitHub Actions for pushing to ghcr.io.
 

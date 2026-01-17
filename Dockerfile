@@ -12,10 +12,7 @@ RUN bun install --frozen-lockfile
 # Copy source code
 COPY . .
 
-# Build the app
-ARG VITE_CONVEX_URL
-ENV VITE_CONVEX_URL=$VITE_CONVEX_URL
-
+# Build the app (no env vars needed - placeholder will be replaced at runtime)
 RUN bun run build
 
 # Production stage
@@ -26,6 +23,10 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Copy built files from builder
 COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Copy entrypoint script
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
@@ -43,5 +44,6 @@ EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:80/ || exit 1
 
-# Start nginx
+# Use entrypoint to inject env vars at runtime
+ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["nginx", "-g", "daemon off;"]
