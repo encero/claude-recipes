@@ -145,6 +145,7 @@ export function RecipesPage() {
               imageUrl={recipe.imageUrl}
               rating={recipe.rating}
               scheduledFor={recipe.nextScheduled ?? undefined}
+              imageGenerationStatus={recipe.imageGenerationStatus}
             />
           ))}
         </div>

@@ -5,6 +5,17 @@ import { authTables } from "@convex-dev/auth/server";
 export default defineSchema({
   ...authTables,
 
+  users: defineTable({
+    name: v.optional(v.string()),
+    image: v.optional(v.string()),
+    email: v.optional(v.string()),
+    emailVerificationTime: v.optional(v.number()),
+    phone: v.optional(v.string()),
+    phoneVerificationTime: v.optional(v.number()),
+    isAnonymous: v.optional(v.boolean()),
+    canGenerateImages: v.optional(v.boolean()),
+  }).index("email", ["email"]),
+
   recipes: defineTable({
     name: v.string(),
     description: v.optional(v.string()),
@@ -13,6 +24,15 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
     createdBy: v.id("users"),
+    imageGenerationStatus: v.optional(
+      v.union(
+        v.literal("generating"),
+        v.literal("completed"),
+        v.literal("failed")
+      )
+    ),
+    imageSource: v.optional(v.union(v.literal("upload"), v.literal("ai"))),
+    imagePrompt: v.optional(v.string()),
   })
     .index("by_created_at", ["createdAt"])
     .index("by_name", ["name"])
@@ -40,4 +60,9 @@ export default defineSchema({
     .index("by_recipe", ["recipeId"])
     .index("by_user", ["createdBy"])
     .index("by_completed", ["completed"]),
+
+  imageGenerationLimits: defineTable({
+    date: v.string(), // "2026-01-17" format
+    count: v.number(),
+  }).index("by_date", ["date"]),
 });

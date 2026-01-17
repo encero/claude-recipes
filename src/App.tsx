@@ -6,6 +6,7 @@ import { RecipeDetailPage } from "./pages/RecipeDetailPage";
 import { PlannerPage } from "./pages/PlannerPage";
 import { HistoryPage } from "./pages/HistoryPage";
 import { Layout } from "./components/Layout";
+import { ThemeProvider } from "./context/ThemeContext";
 
 function App() {
   const { isAuthenticated, isLoading } = useConvexAuth();
@@ -21,26 +22,28 @@ function App() {
   }
 
   return (
-    <BrowserRouter>
-      <Routes>
-        {!isAuthenticated ? (
-          <>
-            <Route path="/auth" element={<AuthPage />} />
-            <Route path="*" element={<Navigate to="/auth" replace />} />
-          </>
-        ) : (
-          <>
-            <Route element={<Layout />}>
-              <Route path="/" element={<RecipesPage />} />
-              <Route path="/recipe/:id" element={<RecipeDetailPage />} />
-              <Route path="/planner" element={<PlannerPage />} />
-              <Route path="/history" element={<HistoryPage />} />
-            </Route>
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </>
-        )}
-      </Routes>
-    </BrowserRouter>
+    <ThemeProvider>
+      <BrowserRouter>
+        <Routes>
+          {!isAuthenticated ? (
+            <>
+              <Route path="/auth" element={<AuthPage />} />
+              <Route path="*" element={<Navigate to="/auth" replace />} />
+            </>
+          ) : (
+            <>
+              <Route element={<Layout />}>
+                <Route path="/" element={<RecipesPage />} />
+                <Route path="/recipe/:id" element={<RecipeDetailPage />} />
+                <Route path="/planner" element={<PlannerPage />} />
+                <Route path="/history" element={<HistoryPage />} />
+              </Route>
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </>
+          )}
+        </Routes>
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }
 

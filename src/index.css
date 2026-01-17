@@ -2,17 +2,93 @@
 
 @theme {
   --font-sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
-  --color-primary-50: #fef3f2;
-  --color-primary-100: #fee4e2;
-  --color-primary-200: #fecbca;
-  --color-primary-300: #fca5a3;
-  --color-primary-400: #f77774;
-  --color-primary-500: #ee4d49;
-  --color-primary-600: #dc3730;
-  --color-primary-700: #b82421;
-  --color-primary-800: #98221f;
-  --color-primary-900: #7e2320;
-  --color-primary-950: #450e0c;
+  /* Default: Amber - warm and appetizing */
+  --color-primary-50: #fdf8f3;
+  --color-primary-100: #faeee3;
+  --color-primary-200: #f5dcc6;
+  --color-primary-300: #eec4a0;
+  --color-primary-400: #e4a373;
+  --color-primary-500: #db8550;
+  --color-primary-600: #c96d3c;
+  --color-primary-700: #a75532;
+  --color-primary-800: #86452d;
+  --color-primary-900: #6d3a27;
+  --color-primary-950: #3a1c12;
+}
+
+/* Sage - fresh and natural */
+[data-theme="sage"] {
+  --color-primary-50: #f6f7f4;
+  --color-primary-100: #e8ebe3;
+  --color-primary-200: #d2d8c8;
+  --color-primary-300: #b4bfa4;
+  --color-primary-400: #95a37f;
+  --color-primary-500: #788862;
+  --color-primary-600: #5e6c4d;
+  --color-primary-700: #4a5540;
+  --color-primary-800: #3d4536;
+  --color-primary-900: #343b2f;
+  --color-primary-950: #1a1f17;
+}
+
+/* Ocean - calm and modern */
+[data-theme="ocean"] {
+  --color-primary-50: #f0f9fa;
+  --color-primary-100: #d9f0f3;
+  --color-primary-200: #b8e2e8;
+  --color-primary-300: #87cdd7;
+  --color-primary-400: #4fb0be;
+  --color-primary-500: #3494a3;
+  --color-primary-600: #2e788a;
+  --color-primary-700: #2b6271;
+  --color-primary-800: #2a515e;
+  --color-primary-900: #274450;
+  --color-primary-950: #152c35;
+}
+
+/* Rose - warm and gentle */
+[data-theme="rose"] {
+  --color-primary-50: #fdf5f5;
+  --color-primary-100: #fce8e8;
+  --color-primary-200: #f9d4d4;
+  --color-primary-300: #f4b4b4;
+  --color-primary-400: #eb8585;
+  --color-primary-500: #dd5c5c;
+  --color-primary-600: #c94040;
+  --color-primary-700: #a83232;
+  --color-primary-800: #8c2d2d;
+  --color-primary-900: #752b2b;
+  --color-primary-950: #3f1212;
+}
+
+/* Slate - clean and minimal */
+[data-theme="slate"] {
+  --color-primary-50: #f6f7f9;
+  --color-primary-100: #eceef2;
+  --color-primary-200: #d5dae2;
+  --color-primary-300: #b1bac9;
+  --color-primary-400: #8794aa;
+  --color-primary-500: #687790;
+  --color-primary-600: #536077;
+  --color-primary-700: #444e61;
+  --color-primary-800: #3b4352;
+  --color-primary-900: #353b47;
+  --color-primary-950: #23272f;
+}
+
+/* Lavender - playful and unique */
+[data-theme="lavender"] {
+  --color-primary-50: #f9f7fc;
+  --color-primary-100: #f2eef9;
+  --color-primary-200: #e7dff4;
+  --color-primary-300: #d4c5eb;
+  --color-primary-400: #bba2dd;
+  --color-primary-500: #a17fcc;
+  --color-primary-600: #8a62b8;
+  --color-primary-700: #7550a0;
+  --color-primary-800: #624484;
+  --color-primary-900: #523a6c;
+  --color-primary-950: #341f4a;
 }
 
 * {

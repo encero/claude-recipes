@@ -1,13 +1,14 @@
 import { useState, useRef, useEffect } from "react";
-import { useMutation } from "convex/react";
+import { useMutation, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { X, Upload, Calendar } from "lucide-react";
+import { X, Upload, Calendar, Sparkles } from "lucide-react";
 import { StarRating } from "./StarRating";
 import type { Id } from "../../convex/_generated/dataModel";
 
 interface RecipeData {
   _id: Id<"recipes">;
   name: string;
+  imagePrompt?: string | null;
   description?: string | null;
   imageUrl?: string | null;
   rating?: number | null;
@@ -34,12 +35,15 @@ export function AddRecipeModal({
   const [isLoading, setIsLoading] = useState(false);
   const [showSchedule, setShowSchedule] = useState(false);
   const [scheduleDate, setScheduleDate] = useState("");
+  const [generateAiImage, setGenerateAiImage] = useState(false);
+  const [imagePrompt, setImagePrompt] = useState<string | null>(editRecipe?.imagePrompt ?? null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const createRecipe = useMutation(api.recipes.create);
   const updateRecipe = useMutation(api.recipes.update);
   const generateUploadUrl = useMutation(api.recipes.generateUploadUrl);
   const scheduleMeal = useMutation(api.scheduledMeals.schedule);
+  const generateRecipeImage = useAction(api.imageGeneration.generateRecipeImage);
 
   const isEditMode = !!editRecipe;
 
@@ -51,6 +55,7 @@ export function AddRecipeModal({
       setRating(editRecipe.rating ?? null);
       setImagePreview(editRecipe.imageUrl ?? null);
       setImageFile(null);
+      setImagePrompt(editRecipe.imagePrompt ?? null);
     }
   }, [editRecipe]);
 
@@ -92,6 +97,7 @@ export function AddRecipeModal({
           description: description.trim() || undefined,
           rating: rating ?? undefined,
           ...(imageId && { imageId }),
+          imagePrompt: imagePrompt?.trim() || undefined,
         });
         onRecipeAdded?.(editRecipe._id);
       } else {
@@ -100,12 +106,20 @@ export function AddRecipeModal({
           description: description.trim() || undefined,
           rating: rating ?? undefined,
           imageId,
+          imagePrompt: imagePrompt?.trim() || undefined,
         });
 
         if (showSchedule && scheduleDate) {
           await scheduleMeal({
             recipeId,
             scheduledFor: new Date(scheduleDate).getTime(),
+          });
+        }
+
+        // Trigger AI image generation if checked and no image uploaded
+        if (generateAiImage && !imageId) {
+          generateRecipeImage({ recipeId }).catch((error) => {
+            console.error("Failed to generate AI image:", error);
           });
         }
 
@@ -129,6 +143,8 @@ export function AddRecipeModal({
     setImagePreview(null);
     setShowSchedule(false);
     setScheduleDate("");
+    setGenerateAiImage(false);
+    setImagePrompt(null);
   };
 
   if (!isOpen) return null;
@@ -183,6 +199,20 @@ export function AddRecipeModal({
                 </>
               )}
             </button>
+
+            {/* AI Image Generation Checkbox - only for new recipes without image */}
+            {!isEditMode && !imageFile && !imagePreview && (
+              <label className="flex items-center gap-2 mt-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={generateAiImage}
+                  onChange={(e) => setGenerateAiImage(e.target.checked)}
+                  className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                />
+                <Sparkles className="w-4 h-4 text-primary-500" />
+                <span className="text-sm text-gray-600">Generate AI image</span>
+              </label>
+            )}
           </div>
 
           {/* Name */}
@@ -213,7 +243,18 @@ export function AddRecipeModal({
               className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
             />
           </div>
-
+          {/* Description */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Image prompt
+            </label>
+            <input
+              value={imagePrompt || ""}
+              onChange={(e) => setImagePrompt(e.target.value)}
+              placeholder="Name of the recipe in english..."
+              className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+            />
+          </div>
           {/* Rating */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">

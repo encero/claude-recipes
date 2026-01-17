@@ -11,6 +11,8 @@
 import type * as auth from "../auth.js";
 import type * as cookingHistory from "../cookingHistory.js";
 import type * as http from "../http.js";
+import type * as imageGeneration from "../imageGeneration.js";
+import type * as imageGenerationHelpers from "../imageGenerationHelpers.js";
 import type * as recipes from "../recipes.js";
 import type * as scheduledMeals from "../scheduledMeals.js";
 
@@ -24,6 +26,8 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   cookingHistory: typeof cookingHistory;
   http: typeof http;
+  imageGeneration: typeof imageGeneration;
+  imageGenerationHelpers: typeof imageGenerationHelpers;
   recipes: typeof recipes;
   scheduledMeals: typeof scheduledMeals;
 }>;

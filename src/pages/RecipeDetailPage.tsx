@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import {
@@ -11,16 +11,32 @@ import {
   Trash2,
   UtensilsCrossed,
   X,
+  Sparkles,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 import { AddRecipeModal } from "../components/AddRecipeModal";
 import { StarRating } from "../components/StarRating";
-import { format, isToday, isTomorrow } from "date-fns";
+import { format, isToday, isTomorrow, differenceInDays } from "date-fns";
 
 function formatScheduledDate(timestamp: number): string {
   const date = new Date(timestamp);
   if (isToday(date)) return "Today";
   if (isTomorrow(date)) return "Tomorrow";
   return format(date, "EEE, MMM d");
+}
+
+function getRelativeLabel(timestamp: number): { label: string; isUrgent: boolean } {
+  const date = new Date(timestamp);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  if (isToday(date)) return { label: "Today", isUrgent: true };
+  if (isTomorrow(date)) return { label: "Tomorrow", isUrgent: true };
+
+  const days = differenceInDays(date, today);
+  if (days < 7) return { label: `In ${days} days`, isUrgent: false };
+  return { label: format(date, "MMM d"), isUrgent: false };
 }
 
 export function RecipeDetailPage() {
@@ -40,6 +56,7 @@ export function RecipeDetailPage() {
   const addHistory = useMutation(api.cookingHistory.add);
   const scheduleMeal = useMutation(api.scheduledMeals.schedule);
   const removeScheduled = useMutation(api.scheduledMeals.remove);
+  const generateRecipeImage = useAction(api.imageGeneration.generateRecipeImage);
 
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [showCookModal, setShowCookModal] = useState(false);
@@ -49,6 +66,7 @@ export function RecipeDetailPage() {
   const [cookRating, setCookRating] = useState<number | null>(null);
   const [selectedScheduledMeal, setSelectedScheduledMeal] = useState<Id<"scheduledMeals"> | "none" | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [generationError, setGenerationError] = useState<string | null>(null);
 
   if (recipe === undefined) {
     return (
@@ -120,6 +138,16 @@ export function RecipeDetailPage() {
     await removeScheduled({ id: scheduledId });
   };
 
+  const handleGenerateImage = async () => {
+    setGenerationError(null);
+    try {
+      await generateRecipeImage({ recipeId: recipe._id });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to generate image";
+      setGenerationError(message);
+    }
+  };
+
   return (
     <div className="pb-4">
       {/* Header Image */}
@@ -130,9 +158,32 @@ export function RecipeDetailPage() {
             alt={recipe.name}
             className="w-full h-full object-cover"
           />
+        ) : recipe.imageGenerationStatus === "generating" ? (
+          <div className="w-full h-full flex flex-col items-center justify-center">
+            <Loader2 className="w-12 h-12 text-primary-500 animate-spin" />
+            <span className="text-sm text-gray-500 mt-3">Generating image...</span>
+          </div>
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
+          <div className="w-full h-full flex flex-col items-center justify-center">
             <UtensilsCrossed className="w-16 h-16 text-gray-300" />
+            {recipe.imageGenerationStatus === "failed" && (
+              <div className="mt-3 flex items-center gap-1 text-red-500 text-sm">
+                <AlertCircle className="w-4 h-4" />
+                <span>Generation failed</span>
+              </div>
+            )}
+            <button
+              onClick={handleGenerateImage}
+              className="mt-3 flex items-center gap-2 px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors"
+            >
+              <Sparkles className="w-4 h-4" />
+              {recipe.imageGenerationStatus === "failed" ? "Try Again" : "Generate AI Image"}
+            </button>
+            {generationError && (
+              <p className="mt-2 text-sm text-red-500 max-w-xs text-center">
+                {generationError}
+              </p>
+            )}
           </div>
         )}
 
@@ -181,27 +232,47 @@ export function RecipeDetailPage() {
 
         {/* Scheduled Meals */}
         {recipe.scheduledMeals && recipe.scheduledMeals.length > 0 && (
-          <div className="mt-4 p-3 bg-primary-50 rounded-xl">
-            <div className="flex items-center gap-2 text-primary-700 mb-2">
-              <Calendar className="w-4 h-4" />
-              <span className="text-sm font-medium">Scheduled</span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {recipe.scheduledMeals.map((meal) => (
+          <div className="mt-5 space-y-2">
+            {recipe.scheduledMeals.map((meal) => {
+              const { label, isUrgent } = getRelativeLabel(meal.scheduledFor);
+              const fullDate = format(new Date(meal.scheduledFor), "EEEE, MMMM d");
+
+              return (
                 <div
                   key={meal._id}
-                  className="flex items-center gap-1 bg-white px-3 py-1 rounded-full text-sm"
+                  className={`flex items-center justify-between p-3 rounded-xl border ${
+                    isUrgent
+                      ? "bg-primary-50 border-primary-200"
+                      : "bg-gray-50 border-gray-100"
+                  }`}
                 >
-                  <span>{formatScheduledDate(meal.scheduledFor)}</span>
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      isUrgent ? "bg-primary-100" : "bg-gray-100"
+                    }`}>
+                      <Calendar className={`w-5 h-5 ${
+                        isUrgent ? "text-primary-600" : "text-gray-500"
+                      }`} />
+                    </div>
+                    <div>
+                      <p className={`font-semibold ${
+                        isUrgent ? "text-primary-900" : "text-gray-900"
+                      }`}>
+                        {label}
+                      </p>
+                      <p className="text-sm text-gray-500">{fullDate}</p>
+                    </div>
+                  </div>
                   <button
                     onClick={() => handleRemoveScheduled(meal._id)}
-                    className="text-gray-400 hover:text-red-500 ml-1"
+                    className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-red-100 text-gray-400 hover:text-red-500 transition-colors"
+                    aria-label="Remove scheduled meal"
                   >
-                    <X className="w-3 h-3" />
+                    <X className="w-5 h-5" />
                   </button>
                 </div>
-              ))}
-            </div>
+              );
+            })}
           </div>
         )}
 

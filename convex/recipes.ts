@@ -79,6 +79,7 @@ export const create = mutation({
       createdAt: now,
       updatedAt: now,
       createdBy: userId,
+      imageSource: args.imageId ? "upload" : undefined,
     });
   },
 });
@@ -90,18 +91,20 @@ export const update = mutation({
     description: v.optional(v.string()),
     imageId: v.optional(v.id("_storage")),
     rating: v.optional(v.number()),
+    imagePrompt: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
 
-    const { id, ...updates } = args;
+    const { id, imageId, ...updates } = args;
     const filteredUpdates = Object.fromEntries(
       Object.entries(updates).filter(([, v]) => v !== undefined)
     );
 
     await ctx.db.patch(id, {
       ...filteredUpdates,
+      ...(imageId && { imageId, imageSource: "upload" as const }),
       updatedAt: Date.now(),
     });
   },

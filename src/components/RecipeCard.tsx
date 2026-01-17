@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { UtensilsCrossed, CalendarDays } from "lucide-react";
+import { UtensilsCrossed, CalendarDays, Loader2 } from "lucide-react";
 import { StarRating } from "./StarRating";
 import { format, isToday, isTomorrow } from "date-fns";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -11,6 +11,7 @@ interface RecipeCardProps {
   imageUrl?: string | null;
   rating?: number | null;
   scheduledFor?: number;
+  imageGenerationStatus?: "generating" | "completed" | "failed" | null;
   onClick?: () => void;
 }
 
@@ -28,6 +29,7 @@ export function RecipeCard({
   imageUrl,
   rating,
   scheduledFor,
+  imageGenerationStatus,
   onClick,
 }: RecipeCardProps) {
   const content = (
@@ -40,6 +42,11 @@ export function RecipeCard({
             alt={name}
             className="w-full h-full object-cover"
           />
+        ) : imageGenerationStatus === "generating" ? (
+          <div className="w-full h-full flex flex-col items-center justify-center bg-gray-100">
+            <Loader2 className="w-8 h-8 text-primary-500 animate-spin" />
+            <span className="text-xs text-gray-500 mt-2">Generating...</span>
+          </div>
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <UtensilsCrossed className="w-12 h-12 text-gray-300" />
@@ -65,11 +72,6 @@ export function RecipeCard({
       {/* Content */}
       <div className="p-3">
         <h3 className="font-semibold text-gray-900 truncate">{name}</h3>
-        {description && (
-          <p className="text-sm text-gray-500 mt-1 line-clamp-2">
-            {description}
-          </p>
-        )}
       </div>
     </div>
   );
