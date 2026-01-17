@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import { useUploadFile } from "@convex-dev/r2/react";
 import { X, Upload, Calendar, Sparkles } from "lucide-react";
 import { StarRating } from "./StarRating";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -44,7 +45,7 @@ export function AddRecipeModal({
 
   const createRecipe = useMutation(api.recipes.create);
   const updateRecipe = useMutation(api.recipes.update);
-  const generateUploadUrl = useMutation(api.recipes.generateUploadUrl);
+  const uploadFile = useUploadFile(api.r2);
   const scheduleMeal = useMutation(api.scheduledMeals.schedule);
   const generateRecipeImage = useAction(api.imageGeneration.generateRecipeImage);
   const createUploadedRecipeImage = useAction(api.imageGeneration.createUploadedRecipeImage);
@@ -81,17 +82,11 @@ export function AddRecipeModal({
 
     setIsLoading(true);
     try {
-      let imageId: Id<"_storage"> | undefined;
+      let imageId: string | undefined;
 
       if (imageFile) {
-        const uploadUrl = await generateUploadUrl();
-        const response = await fetch(uploadUrl, {
-          method: "POST",
-          headers: { "Content-Type": imageFile.type },
-          body: imageFile,
-        });
-        const { storageId } = await response.json();
-        imageId = storageId;
+        // Upload to R2 and get the object key
+        imageId = await uploadFile(imageFile);
       }
 
       let recipeId: Id<"recipes">;

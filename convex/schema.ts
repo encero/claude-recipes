@@ -19,7 +19,7 @@ export default defineSchema({
   recipes: defineTable({
     name: v.string(),
     description: v.optional(v.string()),
-    imageId: v.optional(v.id("_storage")),
+    imageId: v.optional(v.string()), // R2 object key
     rating: v.optional(v.number()), // 1-5 stars
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -40,7 +40,7 @@ export default defineSchema({
 
   recipeImages: defineTable({
     recipeId: v.id("recipes"),
-    imageId: v.optional(v.id("_storage")),
+    imageId: v.optional(v.string()), // R2 object key
     prompt: v.string(),
     status: v.union(
       v.literal("generating"),

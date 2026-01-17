@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { getR2PublicUrl } from "./r2";
 
 export const list = query({
   args: {},
@@ -27,7 +28,7 @@ export const list = query({
         return {
           ...recipe,
           imageUrl: recipe.imageId
-            ? await ctx.storage.getUrl(recipe.imageId)
+            ? getR2PublicUrl(recipe.imageId)
             : null,
           nextScheduled: nextScheduled ?? null,
         };
@@ -52,7 +53,7 @@ export const get = query({
     return {
       ...recipe,
       imageUrl: recipe.imageId
-        ? await ctx.storage.getUrl(recipe.imageId)
+        ? getR2PublicUrl(recipe.imageId)
         : null,
       scheduledMeals: scheduledMeals.sort((a, b) => a.scheduledFor - b.scheduledFor),
     };
@@ -68,14 +69,12 @@ export const getRecipeImages = query({
       .order("desc")
       .collect();
 
-    return Promise.all(
-      images.map(async (image) => ({
-        ...image,
-        imageUrl: image.imageId
-          ? await ctx.storage.getUrl(image.imageId)
-          : null,
-      }))
-    );
+    return images.map((image) => ({
+      ...image,
+      imageUrl: image.imageId
+        ? getR2PublicUrl(image.imageId)
+        : null,
+    }));
   },
 });
 
@@ -83,7 +82,7 @@ export const create = mutation({
   args: {
     name: v.string(),
     description: v.optional(v.string()),
-    imageId: v.optional(v.id("_storage")),
+    imageId: v.optional(v.string()), // R2 object key
     rating: v.optional(v.number()),
     imagePrompt: v.optional(v.string()),
   },
@@ -111,7 +110,7 @@ export const update = mutation({
     id: v.id("recipes"),
     name: v.optional(v.string()),
     description: v.optional(v.string()),
-    imageId: v.optional(v.id("_storage")),
+    imageId: v.optional(v.string()), // R2 object key
     rating: v.optional(v.number()),
     imagePrompt: v.optional(v.string()),
   },
@@ -158,21 +157,7 @@ export const remove = mutation({
       await ctx.db.delete(meal._id);
     }
 
-    // Delete the recipe image if it exists
-    const recipe = await ctx.db.get(args.id);
-    if (recipe?.imageId) {
-      await ctx.storage.delete(recipe.imageId);
-    }
-
+    // Note: R2 files are not automatically deleted - they're cheap and can be cleaned up via lifecycle rules
     await ctx.db.delete(args.id);
-  },
-});
-
-export const generateUploadUrl = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
-    return await ctx.storage.generateUploadUrl();
   },
 });

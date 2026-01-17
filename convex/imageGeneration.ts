@@ -5,6 +5,7 @@ import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import type { Doc, Id } from "./_generated/dataModel";
+import { r2 } from "./r2";
 
 const DAILY_LIMIT = 10;
 
@@ -149,24 +150,13 @@ export const generateRecipeImage = action({
 
       const imageBlob = await imageResponse.blob();
 
-      // 9. Upload to Convex storage
-      const uploadUrl = await ctx.storage.generateUploadUrl();
-      const uploadResponse = await fetch(uploadUrl, {
-        method: "POST",
-        headers: { "Content-Type": imageBlob.type },
-        body: imageBlob,
-      });
-
-      if (!uploadResponse.ok) {
-        throw new Error("Failed to upload image to storage");
-      }
-
-      const { storageId } = await uploadResponse.json();
+      // 9. Upload to R2 storage
+      const key = await r2.store(ctx, imageBlob);
 
       // 10. Update recipe image entry with imageId and status "completed"
       await ctx.runMutation(internal.imageGenerationHelpers.completeRecipeImage, {
         imageEntryId,
-        imageId: storageId,
+        imageId: key,
       });
 
       // 11. Auto-accept the generated image only if it's the first image for this recipe
@@ -188,7 +178,7 @@ export const generateRecipeImage = action({
         // Update the recipe's imageId and prompt (this also sets status to "completed")
         await ctx.runMutation(internal.imageGenerationHelpers.updateRecipeImage, {
           recipeId: args.recipeId,
-          imageId: storageId,
+          imageId: key,
           imagePrompt: prompt,
         });
       }
@@ -250,7 +240,7 @@ export const acceptRecipeImage = action({
 });
 
 export const createUploadedRecipeImage = action({
-  args: { recipeId: v.id("recipes"), imageId: v.id("_storage") },
+  args: { recipeId: v.id("recipes"), imageId: v.string() }, // R2 object key
   handler: async (ctx, args): Promise<{ success: boolean }> => {
     try {
       // Check user is authenticated
@@ -271,7 +261,7 @@ export const createUploadedRecipeImage = action({
 });
 
 export const replaceRecipeImage = action({
-  args: { recipeId: v.id("recipes"), imageId: v.id("_storage") },
+  args: { recipeId: v.id("recipes"), imageId: v.string() }, // R2 object key
   handler: async (ctx, args): Promise<{ success: boolean }> => {
     try {
       // Check user is authenticated

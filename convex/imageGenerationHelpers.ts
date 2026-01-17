@@ -84,7 +84,7 @@ export const updateStatus = internalMutation({
 export const setImage = internalMutation({
   args: {
     recipeId: v.id("recipes"),
-    imageId: v.id("_storage"),
+    imageId: v.string(), // R2 object key
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.recipeId, {
@@ -117,7 +117,7 @@ export const createRecipeImage = internalMutation({
 export const createUploadedRecipeImage = internalMutation({
   args: {
     recipeId: v.id("recipes"),
-    imageId: v.id("_storage"),
+    imageId: v.string(), // R2 object key
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -138,7 +138,7 @@ export const createUploadedRecipeImage = internalMutation({
 export const completeRecipeImage = internalMutation({
   args: {
     imageEntryId: v.id("recipeImages"),
-    imageId: v.id("_storage"),
+    imageId: v.string(), // R2 object key
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.imageEntryId, {
@@ -191,7 +191,7 @@ export const unacceptAllRecipeImages = internalMutation({
 export const updateRecipeImage = internalMutation({
   args: {
     recipeId: v.id("recipes"),
-    imageId: v.id("_storage"),
+    imageId: v.string(), // R2 object key
     imagePrompt: v.optional(v.string()),
   },
   handler: async (ctx, args) => {

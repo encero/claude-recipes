@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import { useUploadFile } from "@convex-dev/r2/react";
 import type { Id } from "../../convex/_generated/dataModel";
 import {
   ArrowLeft,
