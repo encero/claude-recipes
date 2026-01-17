@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useMutation, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { X, Upload, Calendar, Sparkles } from "lucide-react";
@@ -39,6 +40,8 @@ export function AddRecipeModal({
   const [imagePrompt, setImagePrompt] = useState<string | null>(editRecipe?.imagePrompt ?? null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const navigate = useNavigate();
+
   const createRecipe = useMutation(api.recipes.create);
   const updateRecipe = useMutation(api.recipes.update);
   const generateUploadUrl = useMutation(api.recipes.generateUploadUrl);
@@ -71,8 +74,7 @@ export function AddRecipeModal({
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (bulk: boolean = false) => {
     if (!name.trim()) return;
 
     setIsLoading(true);
@@ -90,6 +92,8 @@ export function AddRecipeModal({
         imageId = storageId;
       }
 
+      let recipeId: Id<"recipes">;
+
       if (isEditMode && editRecipe) {
         await updateRecipe({
           id: editRecipe._id,
@@ -99,9 +103,9 @@ export function AddRecipeModal({
           ...(imageId && { imageId }),
           imagePrompt: imagePrompt?.trim() || undefined,
         });
-        onRecipeAdded?.(editRecipe._id);
+        recipeId = editRecipe._id;
       } else {
-        const recipeId = await createRecipe({
+        recipeId = await createRecipe({
           name: name.trim(),
           description: description.trim() || undefined,
           rating: rating ?? undefined,
@@ -122,12 +126,17 @@ export function AddRecipeModal({
             console.error("Failed to generate AI image:", error);
           });
         }
-
-        onRecipeAdded?.(recipeId);
       }
 
-      resetForm();
-      onClose();
+      if (bulk) {
+        onRecipeAdded?.(recipeId);
+        resetForm();
+      } else {
+        onRecipeAdded?.(recipeId);
+        resetForm();
+        onClose();
+        if (!isEditMode) navigate(`/recipe/${recipeId}`);
+      }
     } catch (error) {
       console.error("Failed to save recipe:", error);
     } finally {
@@ -169,7 +178,7 @@ export function AddRecipeModal({
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+        <form onSubmit={(e) => { e.preventDefault(); handleSubmit(false); }} className="p-4 space-y-4">
           {/* Image Upload */}
           <div>
             <input
@@ -296,24 +305,35 @@ export function AddRecipeModal({
           {/* Submit */}
           <div className="flex gap-3">
             <button
-              type="submit"
+              type="button"
+              onClick={() => handleSubmit(false)}
               disabled={isLoading || !name.trim()}
               className="flex-1 py-3 px-4 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? "Saving..." : isEditMode ? "Save Changes" : "Add Recipe"}
             </button>
             {!isEditMode && (
-              <button
-                type="submit"
-                onClick={() => {
-                  // Set schedule for today
-                  setScheduleDate(new Date().toISOString().split("T")[0]);
-                }}
-                disabled={isLoading || !name.trim()}
-                className="flex-1 py-3 px-4 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isLoading ? "Saving..." : "Save & Schedule Today"}
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setScheduleDate(new Date().toISOString().split("T")[0]);
+                    handleSubmit(false);
+                  }}
+                  disabled={isLoading || !name.trim()}
+                  className="flex-1 py-3 px-4 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isLoading ? "Saving..." : "Save & Schedule Today"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSubmit(true)}
+                  disabled={isLoading || !name.trim()}
+                  className="flex-1 py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isLoading ? "Saving..." : "Save & Add Another"}
+                </button>
+              </>
             )}
           </div>
         </form>
