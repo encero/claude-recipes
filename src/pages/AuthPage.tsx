@@ -25,8 +25,12 @@ export function AuthPage() {
         formData.append("name", name);
       }
 
-      await signIn("password", formData);
+      const result = await signIn("password", formData);
+      console.log("Sign in result:", result);
+      // The ConvexAuthProvider should automatically update auth state
+      // and the Authenticated/Unauthenticated components should re-render
     } catch (err) {
+      console.error("Sign in error:", err);
       setError(
         isSignUp
           ? "Failed to create account. Please try again."

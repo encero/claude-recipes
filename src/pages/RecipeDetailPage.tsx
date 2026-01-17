@@ -2,18 +2,26 @@ import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { Id } from "../../convex/_generated/dataModel";
+import type { Id } from "../../convex/_generated/dataModel";
 import {
   ArrowLeft,
   Calendar,
   ChefHat,
+  Pencil,
   Trash2,
-  Edit2,
   UtensilsCrossed,
   X,
 } from "lucide-react";
+import { AddRecipeModal } from "../components/AddRecipeModal";
 import { StarRating } from "../components/StarRating";
-import { format } from "date-fns";
+import { format, isToday, isTomorrow } from "date-fns";
+
+function formatScheduledDate(timestamp: number): string {
+  const date = new Date(timestamp);
+  if (isToday(date)) return "Today";
+  if (isTomorrow(date)) return "Tomorrow";
+  return format(date, "EEE, MMM d");
+}
 
 export function RecipeDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -31,12 +39,15 @@ export function RecipeDetailPage() {
   const deleteRecipe = useMutation(api.recipes.remove);
   const addHistory = useMutation(api.cookingHistory.add);
   const scheduleMeal = useMutation(api.scheduledMeals.schedule);
+  const removeScheduled = useMutation(api.scheduledMeals.remove);
 
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [showCookModal, setShowCookModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [scheduleDate, setScheduleDate] = useState("");
   const [cookNotes, setCookNotes] = useState("");
   const [cookRating, setCookRating] = useState<number | null>(null);
+  const [selectedScheduledMeal, setSelectedScheduledMeal] = useState<Id<"scheduledMeals"> | "none" | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   if (recipe === undefined) {
@@ -89,13 +100,24 @@ export function RecipeDetailPage() {
       notes: cookNotes || undefined,
       rating: cookRating ?? undefined,
     });
+
+    // Remove the scheduled meal if one was selected
+    if (selectedScheduledMeal && selectedScheduledMeal !== "none") {
+      await removeScheduled({ id: selectedScheduledMeal });
+    }
+
     setCookNotes("");
     setCookRating(null);
+    setSelectedScheduledMeal(null);
     setShowCookModal(false);
   };
 
   const handleRatingChange = async (newRating: number) => {
     await updateRecipe({ id: recipe._id, rating: newRating });
+  };
+
+  const handleRemoveScheduled = async (scheduledId: Id<"scheduledMeals">) => {
+    await removeScheduled({ id: scheduledId });
   };
 
   return (
@@ -125,12 +147,27 @@ export function RecipeDetailPage() {
         {/* Actions */}
         <div className="absolute top-4 right-4 flex gap-2">
           <button
+            onClick={() => setShowEditModal(true)}
+            className="w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-sm"
+          >
+            <Pencil className="w-5 h-5 text-gray-700" />
+          </button>
+          <button
             onClick={handleDelete}
             disabled={isDeleting}
             className="w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-sm"
           >
             <Trash2 className="w-5 h-5 text-red-500" />
           </button>
+        </div>
+
+        {/* Rating */}
+        <div className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-sm px-3 py-2 rounded-xl">
+          <StarRating
+            rating={recipe.rating}
+            onChange={handleRatingChange}
+            size="lg"
+          />
         </div>
       </div>
 
@@ -142,22 +179,46 @@ export function RecipeDetailPage() {
           <p className="text-gray-600 mt-2">{recipe.description}</p>
         )}
 
-        {/* Rating */}
-        <div className="mt-4">
-          <p className="text-sm font-medium text-gray-700 mb-1">
-            Overall Rating
-          </p>
-          <StarRating
-            rating={recipe.rating}
-            onChange={handleRatingChange}
-            size="lg"
-          />
-        </div>
+        {/* Scheduled Meals */}
+        {recipe.scheduledMeals && recipe.scheduledMeals.length > 0 && (
+          <div className="mt-4 p-3 bg-primary-50 rounded-xl">
+            <div className="flex items-center gap-2 text-primary-700 mb-2">
+              <Calendar className="w-4 h-4" />
+              <span className="text-sm font-medium">Scheduled</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {recipe.scheduledMeals.map((meal) => (
+                <div
+                  key={meal._id}
+                  className="flex items-center gap-1 bg-white px-3 py-1 rounded-full text-sm"
+                >
+                  <span>{formatScheduledDate(meal.scheduledFor)}</span>
+                  <button
+                    onClick={() => handleRemoveScheduled(meal._id)}
+                    className="text-gray-400 hover:text-red-500 ml-1"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Action Buttons */}
         <div className="mt-6 flex gap-3">
           <button
-            onClick={() => setShowCookModal(true)}
+            onClick={() => {
+              // Auto-select the first scheduled meal if there's only one
+              if (recipe.scheduledMeals?.length === 1) {
+                setSelectedScheduledMeal(recipe.scheduledMeals[0]._id);
+              } else if (recipe.scheduledMeals?.length === 0) {
+                setSelectedScheduledMeal("none");
+              } else {
+                setSelectedScheduledMeal(null);
+              }
+              setShowCookModal(true);
+            }}
             className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-primary-600 text-white font-semibold rounded-xl hover:bg-primary-700 transition-colors"
           >
             <ChefHat className="w-5 h-5" />
@@ -254,6 +315,61 @@ export function RecipeDetailPage() {
               </button>
             </div>
 
+            {/* Single Scheduled Meal Indicator */}
+            {recipe.scheduledMeals && recipe.scheduledMeals.length === 1 && (
+              <div className="mb-4 p-3 bg-primary-50 rounded-lg flex items-center gap-3">
+                <Calendar className="w-5 h-5 text-primary-600" />
+                <div>
+                  <p className="text-sm font-medium text-primary-900">
+                    Logging for {formatScheduledDate(recipe.scheduledMeals[0].scheduledFor)}
+                  </p>
+                  <p className="text-xs text-primary-600">
+                    This scheduled meal will be marked as done
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Scheduled Meal Selection */}
+            {recipe.scheduledMeals && recipe.scheduledMeals.length > 1 && (
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Which scheduled meal is this?
+                </label>
+                <div className="space-y-2">
+                  {recipe.scheduledMeals.map((meal) => (
+                    <button
+                      key={meal._id}
+                      onClick={() => setSelectedScheduledMeal(meal._id)}
+                      className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-colors ${
+                        selectedScheduledMeal === meal._id
+                          ? "border-primary-500 bg-primary-50"
+                          : "border-gray-200 hover:border-gray-300"
+                      }`}
+                    >
+                      <Calendar className="w-5 h-5 text-primary-600" />
+                      <span className="font-medium">
+                        {formatScheduledDate(meal.scheduledFor)}
+                      </span>
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setSelectedScheduledMeal("none")}
+                    className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-colors ${
+                      selectedScheduledMeal === "none"
+                        ? "border-primary-500 bg-primary-50"
+                        : "border-gray-200 hover:border-gray-300"
+                    }`}
+                  >
+                    <ChefHat className="w-5 h-5 text-gray-500" />
+                    <span className="font-medium text-gray-600">
+                      Unscheduled cooking
+                    </span>
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 How was it?
@@ -280,13 +396,21 @@ export function RecipeDetailPage() {
 
             <button
               onClick={handleLogCooking}
-              className="w-full py-3 bg-primary-600 text-white font-semibold rounded-lg"
+              disabled={recipe.scheduledMeals && recipe.scheduledMeals.length > 1 && !selectedScheduledMeal}
+              className="w-full py-3 bg-primary-600 text-white font-semibold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Save
             </button>
           </div>
         </div>
       )}
+
+      {/* Edit Recipe Modal */}
+      <AddRecipeModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        editRecipe={recipe}
+      />
     </div>
   );
 }

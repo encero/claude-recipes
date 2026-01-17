@@ -10,6 +10,8 @@ import { Layout } from "./components/Layout";
 function App() {
   const { isAuthenticated, isLoading } = useConvexAuth();
 
+  console.log("Auth state:", { isAuthenticated, isLoading });
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">

@@ -11,12 +11,27 @@ export const list = query({
       .collect();
 
     return Promise.all(
-      recipes.map(async (recipe) => ({
-        ...recipe,
-        imageUrl: recipe.imageId
-          ? await ctx.storage.getUrl(recipe.imageId)
-          : null,
-      }))
+      recipes.map(async (recipe) => {
+        // Get upcoming scheduled meals for this recipe
+        const scheduledMeals = await ctx.db
+          .query("scheduledMeals")
+          .withIndex("by_recipe", (q) => q.eq("recipeId", recipe._id))
+          .filter((q) => q.eq(q.field("completed"), false))
+          .collect();
+
+        // Find the next scheduled date
+        const nextScheduled = scheduledMeals
+          .map((m) => m.scheduledFor)
+          .sort((a, b) => a - b)[0];
+
+        return {
+          ...recipe,
+          imageUrl: recipe.imageId
+            ? await ctx.storage.getUrl(recipe.imageId)
+            : null,
+          nextScheduled: nextScheduled ?? null,
+        };
+      })
     );
   },
 });
@@ -27,11 +42,19 @@ export const get = query({
     const recipe = await ctx.db.get(args.id);
     if (!recipe) return null;
 
+    // Get upcoming scheduled meals for this recipe
+    const scheduledMeals = await ctx.db
+      .query("scheduledMeals")
+      .withIndex("by_recipe", (q) => q.eq("recipeId", args.id))
+      .filter((q) => q.eq(q.field("completed"), false))
+      .collect();
+
     return {
       ...recipe,
       imageUrl: recipe.imageId
         ? await ctx.storage.getUrl(recipe.imageId)
         : null,
+      scheduledMeals: scheduledMeals.sort((a, b) => a.scheduledFor - b.scheduledFor),
     };
   },
 });
