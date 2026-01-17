@@ -25,7 +25,6 @@ function formatScheduledDate(timestamp: number): string {
 export function RecipeCard({
   id,
   name,
-  description,
   imageUrl,
   rating,
   scheduledFor,

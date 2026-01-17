@@ -13,7 +13,8 @@ import {
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useTheme, themes } from "../context/ThemeContext";
+import { useTheme } from "../context/ThemeContext";
+import { themes } from "../context/themes";
 
 export function Layout() {
   const { signOut } = useAuthActions();

@@ -7,9 +7,9 @@ export const list = query({
     includeCompleted: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    let query = ctx.db.query("scheduledMeals").order("asc");
+    const mealsQuery = ctx.db.query("scheduledMeals").order("asc");
 
-    const meals = await query.collect();
+    const meals = await mealsQuery.collect();
 
     const filteredMeals = args.includeCompleted
       ? meals
