@@ -38,6 +38,23 @@ export default defineSchema({
     .index("by_name", ["name"])
     .index("by_user", ["createdBy"]),
 
+  recipeImages: defineTable({
+    recipeId: v.id("recipes"),
+    imageId: v.optional(v.id("_storage")),
+    prompt: v.string(),
+    status: v.union(
+      v.literal("generating"),
+      v.literal("completed"),
+      v.literal("failed")
+    ),
+    isAccepted: v.boolean(),
+    createdAt: v.number(),
+    createdBy: v.id("users"),
+  })
+    .index("by_recipe", ["recipeId"])
+    .index("by_user", ["createdBy"])
+    .index("by_accepted", ["isAccepted"]),
+
   cookingHistory: defineTable({
     recipeId: v.id("recipes"),
     cookedAt: v.number(),

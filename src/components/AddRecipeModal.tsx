@@ -47,6 +47,8 @@ export function AddRecipeModal({
   const generateUploadUrl = useMutation(api.recipes.generateUploadUrl);
   const scheduleMeal = useMutation(api.scheduledMeals.schedule);
   const generateRecipeImage = useAction(api.imageGeneration.generateRecipeImage);
+  const createUploadedRecipeImage = useAction(api.imageGeneration.createUploadedRecipeImage);
+  const replaceRecipeImage = useAction(api.imageGeneration.replaceRecipeImage);
 
   const isEditMode = !!editRecipe;
 
@@ -95,6 +97,15 @@ export function AddRecipeModal({
       let recipeId: Id<"recipes">;
 
       if (isEditMode && editRecipe) {
+        // For updates, handle image changes
+        if (imageId) {
+          // Replace the recipe image (handles unaccepting old images and accepting new one)
+          await replaceRecipeImage({
+            recipeId: editRecipe._id,
+            imageId,
+          });
+        }
+
         await updateRecipe({
           id: editRecipe._id,
           name: name.trim(),
@@ -105,6 +116,7 @@ export function AddRecipeModal({
         });
         recipeId = editRecipe._id;
       } else {
+        // For new recipes
         recipeId = await createRecipe({
           name: name.trim(),
           description: description.trim() || undefined,
@@ -112,6 +124,14 @@ export function AddRecipeModal({
           imageId,
           imagePrompt: imagePrompt?.trim() || undefined,
         });
+
+        // If an image was uploaded, add it to image history and auto-accept
+        if (imageId) {
+          await createUploadedRecipeImage({
+            recipeId,
+            imageId,
+          });
+        }
 
         if (scheduleDate.trim()) {
           await scheduleMeal({

@@ -50,8 +50,10 @@ export function PlannerPage() {
   const scheduleMeal = useMutation(api.scheduledMeals.schedule);
 
   const getMealsForDay = (day: Date) => {
-    return scheduledMeals?.filter((meal) =>
-      isSameDay(new Date(meal.scheduledFor), day)
+    return scheduledMeals?.filter(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (meal: any) =>
+        isSameDay(new Date(meal.scheduledFor), day)
     );
   };
 
@@ -156,7 +158,8 @@ export function PlannerPage() {
 
                 {meals && meals.length > 0 && (
                   <div className="space-y-2">
-                    {meals.map((meal) => (
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                    {meals.map((meal: any) => (
                       <button
                         key={meal._id}
                         onClick={() =>
@@ -302,7 +305,8 @@ export function PlannerPage() {
 
               {recipes && recipes.length > 0 && (
                 <div className="space-y-2">
-                  {recipes.map((recipe) => (
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                  {recipes.map((recipe: any) => (
                     <button
                       key={recipe._id}
                       onClick={() => handleAddMeal(recipe._id)}

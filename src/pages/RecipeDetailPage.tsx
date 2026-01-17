@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
@@ -14,6 +14,10 @@ import {
   Sparkles,
   Loader2,
   AlertCircle,
+  ImageIcon,
+  Check,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { AddRecipeModal } from "../components/AddRecipeModal";
 import { StarRating } from "../components/StarRating";
@@ -50,6 +54,10 @@ export function RecipeDetailPage() {
     api.cookingHistory.listByRecipe,
     id ? { recipeId: id as Id<"recipes"> } : "skip"
   );
+  const recipeImages = useQuery(
+    api.recipes.getRecipeImages,
+    id ? { recipeId: id as Id<"recipes"> } : "skip"
+  );
 
   const updateRecipe = useMutation(api.recipes.update);
   const deleteRecipe = useMutation(api.recipes.remove);
@@ -57,16 +65,35 @@ export function RecipeDetailPage() {
   const scheduleMeal = useMutation(api.scheduledMeals.schedule);
   const removeScheduled = useMutation(api.scheduledMeals.remove);
   const generateRecipeImage = useAction(api.imageGeneration.generateRecipeImage);
+  const acceptRecipeImage = useAction(api.imageGeneration.acceptRecipeImage);
+  const generateUploadUrl = useMutation(api.recipes.generateUploadUrl);
+  const replaceRecipeImage = useAction(api.imageGeneration.replaceRecipeImage);
 
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [showCookModal, setShowCookModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false);
   const [scheduleDate, setScheduleDate] = useState("");
   const [cookNotes, setCookNotes] = useState("");
   const [cookRating, setCookRating] = useState<number | null>(null);
   const [selectedScheduledMeal, setSelectedScheduledMeal] = useState<Id<"scheduledMeals"> | "none" | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
+  const [imagePrompt, setImagePrompt] = useState("");
+  const [isGeneratingVariant, setIsGeneratingVariant] = useState(false);
+  const [isImageHistoryExpanded, setIsImageHistoryExpanded] = useState(false);
+  const [imageVariantMode, setImageVariantMode] = useState<"generate" | "upload">("generate");
+  const [variantImageFile, setVariantImageFile] = useState<File | null>(null);
+  const [variantImagePreview, setVariantImagePreview] = useState<string | null>(null);
+
+  const variantFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Prepopulate image prompt when recipe loads or modal opens
+  useEffect(() => {
+    if (recipe && showImageModal) {
+      setImagePrompt(recipe.imagePrompt || recipe.name);
+    }
+  }, [recipe, showImageModal]);
 
   if (recipe === undefined) {
     return (
@@ -148,6 +175,65 @@ export function RecipeDetailPage() {
     }
   };
 
+  const handleGenerateVariant = async () => {
+    if (imageVariantMode === "generate" && !imagePrompt.trim()) return;
+    if (imageVariantMode === "upload" && !variantImageFile) return;
+    
+    setIsGeneratingVariant(true);
+    setGenerationError(null);
+    try {
+      if (imageVariantMode === "generate") {
+        await generateRecipeImage({ recipeId: recipe._id, prompt: imagePrompt.trim() });
+      } else {
+        // Handle image upload
+        const uploadUrl = await generateUploadUrl();
+        const response = await fetch(uploadUrl, {
+          method: "POST",
+          headers: { "Content-Type": variantImageFile!.type },
+          body: variantImageFile,
+        });
+        const { storageId } = await response.json();
+        
+        // Create uploaded image entry
+        await replaceRecipeImage({
+          recipeId: recipe._id,
+          imageId: storageId,
+        });
+      }
+      setShowImageModal(false);
+      // Reset form
+      setImagePrompt("");
+      setVariantImageFile(null);
+      setVariantImagePreview(null);
+      setImageVariantMode("generate");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to add image variant";
+      setGenerationError(message);
+    } finally {
+      setIsGeneratingVariant(false);
+    }
+  };
+
+  const handleAcceptImage = async (imageEntryId: Id<"recipeImages">) => {
+    try {
+      await acceptRecipeImage({ imageEntryId });
+    } catch (error) {
+      console.error("Failed to accept image:", error);
+    }
+  };
+
+  const handleVariantFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setVariantImageFile(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setVariantImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   return (
     <div className="pb-4">
       {/* Header Image */}
@@ -197,6 +283,13 @@ export function RecipeDetailPage() {
 
         {/* Actions */}
         <div className="absolute top-4 right-4 flex gap-2">
+          <button
+            onClick={() => setShowImageModal(true)}
+            className="w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-sm"
+            title="Generate image variant"
+          >
+            <ImageIcon className="w-5 h-5 text-gray-700" />
+          </button>
           <button
             onClick={() => setShowEditModal(true)}
             className="w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-sm"
@@ -336,6 +429,86 @@ export function RecipeDetailPage() {
                   )}
                 </div>
               ))}
+            </div>
+          )}
+        </div>
+
+        {/* Image History */}
+        <div className="mt-8">
+          <button
+            onClick={() => setIsImageHistoryExpanded(!isImageHistoryExpanded)}
+            className="flex items-center justify-between w-full text-left"
+          >
+            <h2 className="text-lg font-semibold text-gray-900">
+              Image History
+            </h2>
+            {isImageHistoryExpanded ? (
+              <ChevronUp className="w-5 h-5 text-gray-500" />
+            ) : (
+              <ChevronDown className="w-5 h-5 text-gray-500" />
+            )}
+          </button>
+
+          {isImageHistoryExpanded && (
+            <div className="mt-3">
+              {recipeImages && recipeImages.length === 0 && (
+                <p className="text-gray-500 text-sm">
+                  No generated images yet.
+                </p>
+              )}
+
+              {recipeImages && recipeImages.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {recipeImages.map((imageEntry) => (
+                    <div
+                      key={imageEntry._id}
+                      className="bg-white rounded-lg border border-gray-200 overflow-hidden"
+                    >
+                      {imageEntry.status === "generating" ? (
+                        <div className="aspect-square flex flex-col items-center justify-center">
+                          <Loader2 className="w-8 h-8 text-primary-500 animate-spin" />
+                          <span className="text-xs text-gray-500 mt-2">Generating...</span>
+                        </div>
+                      ) : imageEntry.status === "failed" ? (
+                        <div className="aspect-square flex flex-col items-center justify-center">
+                          <AlertCircle className="w-8 h-8 text-red-500" />
+                          <span className="text-xs text-gray-500 mt-2">Failed</span>
+                        </div>
+                      ) : imageEntry.imageUrl ? (
+                        <>
+                          <div className="aspect-square relative">
+                            <img
+                              src={imageEntry.imageUrl}
+                              alt={`Generated image: ${imageEntry.prompt}`}
+                              className="w-full h-full object-cover"
+                            />
+                            {imageEntry.isAccepted && (
+                              <div className="absolute top-2 right-2 bg-green-500 text-white px-2 py-1 rounded text-xs font-medium flex items-center gap-1">
+                                <Check className="w-3 h-3" />
+                                Active
+                              </div>
+                            )}
+                            <div className="absolute bottom-0 left-0 right-0 bg-black/60 backdrop-blur-sm p-2 flex items-center justify-between">
+                              <p className="text-xs text-white truncate flex-1" title={imageEntry.prompt}>
+                                {imageEntry.prompt}
+                              </p>
+                              {!imageEntry.isAccepted && (
+                                <button
+                                  onClick={() => handleAcceptImage(imageEntry._id)}
+                                  className="text-xs text-white/90 hover:text-white font-medium ml-2 flex items-center gap-1 px-2 py-1 rounded hover:bg-white/10 transition-colors"
+                                >
+                                  <Check className="w-3 h-3" />
+                                  Accept
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -494,6 +667,166 @@ export function RecipeDetailPage() {
         onClose={() => setShowEditModal(false)}
         editRecipe={recipe}
       />
+
+      {/* Image Generation Modal */}
+      {showImageModal && (
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-[60] p-0 sm:p-4"
+          onClick={() => setShowImageModal(false)}
+        >
+          <div 
+            className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl p-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">
+                {imageVariantMode === "generate" ? "Generate Image Variant" : "Upload Image Variant"}
+              </h3>
+              <button
+                onClick={() => setShowImageModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-full"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Mode Toggle */}
+            <div className="mb-4">
+              <div className="flex bg-gray-100 rounded-lg p-1">
+                <button
+                  onClick={() => {
+                    setImageVariantMode("generate");
+                    setVariantImageFile(null);
+                    setVariantImagePreview(null);
+                  }}
+                  className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+                    imageVariantMode === "generate"
+                      ? "bg-white text-gray-900 shadow-sm"
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  <Sparkles className="w-4 h-4 inline mr-1" />
+                  Generate
+                </button>
+                <button
+                  onClick={() => {
+                    setImageVariantMode("upload");
+                    setVariantImageFile(null);
+                    setVariantImagePreview(null);
+                  }}
+                  className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+                    imageVariantMode === "upload"
+                      ? "bg-white text-gray-900 shadow-sm"
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  <ImageIcon className="w-4 h-4 inline mr-1" />
+                  Upload
+                </button>
+              </div>
+            </div>
+
+            {/* Generate Mode */}
+            {imageVariantMode === "generate" && (
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Prompt for AI image generation
+                </label>
+                <textarea
+                  value={imagePrompt}
+                  onChange={(e) => setImagePrompt(e.target.value)}
+                  placeholder={`Describe the image you want for "${recipe.name}"...`}
+                  rows={4}
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+                />
+              </div>
+            )}
+
+            {/* Upload Mode */}
+            {imageVariantMode === "upload" && (
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Select image to upload
+                </label>
+                <input
+                  ref={variantFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleVariantFileSelect}
+                  className="hidden"
+                />
+                {!variantImageFile ? (
+                  <button
+                    onClick={() => variantFileInputRef.current?.click()}
+                    className="w-full h-32 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-500 hover:border-primary-500 hover:text-primary-500 transition-colors"
+                  >
+                    <ImageIcon className="w-8 h-8 mb-2" />
+                    <span className="text-sm font-medium">Click to select image</span>
+                    <span className="text-xs">PNG, JPG, GIF up to 10MB</span>
+                  </button>
+                ) : (
+                  <div className="relative">
+                    <img
+                      src={variantImagePreview!}
+                      alt="Preview"
+                      className="w-full h-32 object-cover rounded-lg"
+                    />
+                    <button
+                      onClick={() => {
+                        setVariantImageFile(null);
+                        setVariantImagePreview(null);
+                        if (variantFileInputRef.current) {
+                          variantFileInputRef.current.value = "";
+                        }
+                      }}
+                      className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {generationError && (
+              <p className="mb-4 text-sm text-red-500">
+                {generationError}
+              </p>
+            )}
+
+            <button
+              onClick={handleGenerateVariant}
+              disabled={
+                (imageVariantMode === "generate" && !imagePrompt.trim()) ||
+                (imageVariantMode === "upload" && !variantImageFile) ||
+                isGeneratingVariant
+              }
+              className="w-full py-3 bg-primary-600 text-white font-semibold rounded-lg disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {isGeneratingVariant ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  {imageVariantMode === "generate" ? "Generating..." : "Uploading..."}
+                </>
+              ) : (
+                <>
+                  {imageVariantMode === "generate" ? (
+                    <>
+                      <Sparkles className="w-5 h-5" />
+                      Generate Variant
+                    </>
+                  ) : (
+                    <>
+                      <ImageIcon className="w-5 h-5" />
+                      Upload Variant
+                    </>
+                  )}
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

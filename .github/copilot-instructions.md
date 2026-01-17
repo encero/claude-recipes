@@ -41,3 +41,6 @@ This is a React + TypeScript recipe management app using Convex as the backend-a
 - `Dockerfile`, `nginx.conf`: Production deployment
 
 Focus on user-centric features: recipes, planning, history. Ensure all user-generated content is tied to authenticated users.
+
+
+don't run bun server or convex dev they are running in the background at all times

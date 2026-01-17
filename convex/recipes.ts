@@ -59,6 +59,26 @@ export const get = query({
   },
 });
 
+export const getRecipeImages = query({
+  args: { recipeId: v.id("recipes") },
+  handler: async (ctx, args) => {
+    const images = await ctx.db
+      .query("recipeImages")
+      .withIndex("by_recipe", (q) => q.eq("recipeId", args.recipeId))
+      .order("desc")
+      .collect();
+
+    return Promise.all(
+      images.map(async (image) => ({
+        ...image,
+        imageUrl: image.imageId
+          ? await ctx.storage.getUrl(image.imageId)
+          : null,
+      }))
+    );
+  },
+});
+
 export const create = mutation({
   args: {
     name: v.string(),

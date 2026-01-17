@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery } from "./_generated/server";
+import { getAuthUserId } from "@convex-dev/auth/server";
 
 // Internal queries and mutations for image generation
 
@@ -7,6 +8,25 @@ export const getRecipe = internalQuery({
   args: { recipeId: v.id("recipes") },
   handler: async (ctx, args) => {
     return await ctx.db.get(args.recipeId);
+  },
+});
+
+export const getRecipeImage = internalQuery({
+  args: { imageEntryId: v.id("recipeImages") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.imageEntryId);
+  },
+});
+
+export const hasAcceptedImages = internalQuery({
+  args: { recipeId: v.id("recipes") },
+  handler: async (ctx, args) => {
+    const acceptedImage = await ctx.db
+      .query("recipeImages")
+      .withIndex("by_recipe", (q) => q.eq("recipeId", args.recipeId))
+      .filter((q) => q.eq(q.field("isAccepted"), true))
+      .first();
+    return acceptedImage !== null;
   },
 });
 
@@ -71,6 +91,115 @@ export const setImage = internalMutation({
       imageId: args.imageId,
       imageGenerationStatus: "completed",
       imageSource: "ai",
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+export const createRecipeImage = internalMutation({
+  args: {
+    recipeId: v.id("recipes"),
+    prompt: v.string(),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.insert("recipeImages", {
+      recipeId: args.recipeId,
+      prompt: args.prompt,
+      status: "generating",
+      isAccepted: false,
+      createdAt: Date.now(),
+      createdBy: args.userId,
+    });
+  },
+});
+
+export const createUploadedRecipeImage = internalMutation({
+  args: {
+    recipeId: v.id("recipes"),
+    imageId: v.id("_storage"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    return await ctx.db.insert("recipeImages", {
+      recipeId: args.recipeId,
+      imageId: args.imageId,
+      prompt: "Uploaded image",
+      status: "completed",
+      isAccepted: true,
+      createdAt: Date.now(),
+      createdBy: userId,
+    });
+  },
+});
+
+export const completeRecipeImage = internalMutation({
+  args: {
+    imageEntryId: v.id("recipeImages"),
+    imageId: v.id("_storage"),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.imageEntryId, {
+      imageId: args.imageId,
+      status: "completed",
+    });
+  },
+});
+
+export const failRecipeImage = internalMutation({
+  args: {
+    imageEntryId: v.id("recipeImages"),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.imageEntryId, {
+      status: "failed",
+    });
+  },
+});
+
+export const acceptRecipeImage = internalMutation({
+  args: {
+    imageEntryId: v.id("recipeImages"),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.imageEntryId, {
+      isAccepted: true,
+    });
+  },
+});
+
+export const unacceptAllRecipeImages = internalMutation({
+  args: {
+    recipeId: v.id("recipes"),
+  },
+  handler: async (ctx, args) => {
+    const images = await ctx.db
+      .query("recipeImages")
+      .withIndex("by_recipe", (q) => q.eq("recipeId", args.recipeId))
+      .collect();
+
+    for (const image of images) {
+      if (image.isAccepted) {
+        await ctx.db.patch(image._id, { isAccepted: false });
+      }
+    }
+  },
+});
+
+export const updateRecipeImage = internalMutation({
+  args: {
+    recipeId: v.id("recipes"),
+    imageId: v.id("_storage"),
+    imagePrompt: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.recipeId, {
+      imageId: args.imageId,
+      imageGenerationStatus: "completed",
+      imageSource: "ai",
+      imagePrompt: args.imagePrompt,
       updatedAt: Date.now(),
     });
   },
