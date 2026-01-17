@@ -125,6 +125,7 @@ export const generateRecipeImage = action({
           image_size: "landscape_4_3",
           num_images: 1,
           enable_safety_checker: false,
+          output_format: "webp",
         }),
       });
 
