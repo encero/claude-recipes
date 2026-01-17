@@ -102,59 +102,65 @@ export function Layout() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto pb-20">
+      <main className="flex-1 overflow-auto pb-16 md:pb-20">
         <Outlet />
       </main>
 
       {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2 z-50">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-2 py-1 md:px-4 md:py-2 z-50">
         <div className="max-w-lg mx-auto flex justify-around">
           <NavLink
             to="/"
             className={({ isActive }) =>
-              `flex flex-col items-center py-2 px-4 rounded-lg transition-colors ${
+              `flex flex-col items-center py-1 px-2 md:py-2 md:px-4 rounded-lg transition-colors ${
                 isActive
                   ? "text-primary-600 bg-primary-50"
                   : "text-gray-500 hover:text-gray-700"
               }`
             }
           >
-            <UtensilsCrossed className="w-6 h-6" />
-            <span className="text-xs mt-1 font-medium">Recipes</span>
+            <UtensilsCrossed className="w-5 h-5 md:w-6 md:h-6" />
+            <span className="text-xs mt-0.5 md:mt-1 font-medium hidden sm:inline">Recipes</span>
           </NavLink>
           <NavLink
             to="/planner"
             className={({ isActive }) =>
-              `flex flex-col items-center py-2 px-4 rounded-lg transition-colors ${
+              `flex flex-col items-center py-1 px-2 md:py-2 md:px-4 rounded-lg transition-colors ${
                 isActive
                   ? "text-primary-600 bg-primary-50"
                   : "text-gray-500 hover:text-gray-700"
               }`
             }
           >
-            <CalendarDays className="w-6 h-6" />
-            <span className="text-xs mt-1 font-medium">Planner</span>
+            <CalendarDays className="w-5 h-5 md:w-6 md:h-6" />
+            <span className="text-xs mt-0.5 md:mt-1 font-medium hidden sm:inline">Planner</span>
           </NavLink>
           <NavLink
             to="/history"
             className={({ isActive }) =>
-              `flex flex-col items-center py-2 px-4 rounded-lg transition-colors ${
+              `flex flex-col items-center py-1 px-2 md:py-2 md:px-4 rounded-lg transition-colors ${
                 isActive
                   ? "text-primary-600 bg-primary-50"
                   : "text-gray-500 hover:text-gray-700"
               }`
             }
           >
-            <History className="w-6 h-6" />
-            <span className="text-xs mt-1 font-medium">History</span>
+            <History className="w-5 h-5 md:w-6 md:h-6" />
+            <span className="text-xs mt-0.5 md:mt-1 font-medium hidden sm:inline">History</span>
           </NavLink>
         </div>
       </nav>
 
       {/* Theme Modal */}
       {showThemeModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
-          <div className="bg-white w-full sm:max-w-sm sm:rounded-2xl rounded-t-2xl p-4">
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-[60] p-0 sm:p-4"
+          onClick={() => setShowThemeModal(false)}
+        >
+          <div 
+            className="bg-white w-full sm:max-w-sm sm:rounded-2xl rounded-t-2xl p-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Choose Theme</h3>
               <button
@@ -201,8 +207,14 @@ export function Layout() {
 
       {/* Change PIN Modal */}
       {showPinModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
-          <div className="bg-white w-full sm:max-w-sm sm:rounded-2xl rounded-t-2xl p-4">
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-[60] p-0 sm:p-4"
+          onClick={closePinModal}
+        >
+          <div 
+            className="bg-white w-full sm:max-w-sm sm:rounded-2xl rounded-t-2xl p-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Change PIN</h3>
               <button

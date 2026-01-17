@@ -205,8 +205,14 @@ export function PlannerPage() {
 
       {/* Meal Detail Modal */}
       {selectedMeal && (
-        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
-          <div className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl p-4">
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-[60] p-0 sm:p-4"
+          onClick={() => setSelectedMeal(null)}
+        >
+          <div 
+            className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl p-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">{selectedMeal.recipeName}</h3>
               <button
@@ -264,8 +270,14 @@ export function PlannerPage() {
 
       {/* Add Meal Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
-          <div className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl max-h-[80vh] overflow-hidden flex flex-col">
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-[60] p-0 sm:p-4"
+          onClick={() => { setShowAddModal(false); setSelectedDate(null); }}
+        >
+          <div 
+            className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl max-h-[80vh] overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
               <h3 className="text-lg font-semibold">
                 Add meal for {selectedDate && format(selectedDate, "MMM d")}

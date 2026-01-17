@@ -343,8 +343,14 @@ export function RecipeDetailPage() {
 
       {/* Schedule Modal */}
       {showScheduleModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
-          <div className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl p-4">
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-[60] p-0 sm:p-4"
+          onClick={() => setShowScheduleModal(false)}
+        >
+          <div 
+            className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl p-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Schedule Meal</h3>
               <button
@@ -374,8 +380,14 @@ export function RecipeDetailPage() {
 
       {/* Log Cooking Modal */}
       {showCookModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
-          <div className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl p-4">
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-[60] p-0 sm:p-4"
+          onClick={() => setShowCookModal(false)}
+        >
+          <div 
+            className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl p-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Log Cooking</h3>
               <button
