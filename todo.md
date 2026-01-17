@@ -1,0 +1,2 @@
+- [x] Schedule immediately button in recipe creating should an immediate action to schedule recipe for today and save the recipe. Do a proper ux analysis to change the UI
+- [ ] saving recipe should open the recipe detail page, give the user a way to create immediately next new recipe to support bulk recipe addition.  Do a proper ux analysis to change the UI

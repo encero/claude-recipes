@@ -65,6 +65,7 @@ export const create = mutation({
     description: v.optional(v.string()),
     imageId: v.optional(v.id("_storage")),
     rating: v.optional(v.number()),
+    imagePrompt: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -80,6 +81,7 @@ export const create = mutation({
       updatedAt: now,
       createdBy: userId,
       imageSource: args.imageId ? "upload" : undefined,
+      imagePrompt: args.imagePrompt,
     });
   },
 });

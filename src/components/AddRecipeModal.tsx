@@ -109,7 +109,7 @@ export function AddRecipeModal({
           imagePrompt: imagePrompt?.trim() || undefined,
         });
 
-        if (showSchedule && scheduleDate) {
+        if (scheduleDate.trim()) {
           await scheduleMeal({
             recipeId,
             scheduledFor: new Date(scheduleDate).getTime(),
@@ -294,13 +294,28 @@ export function AddRecipeModal({
           )}
 
           {/* Submit */}
-          <button
-            type="submit"
-            disabled={isLoading || !name.trim()}
-            className="w-full py-3 px-4 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? "Saving..." : isEditMode ? "Save Changes" : "Add Recipe"}
-          </button>
+          <div className="flex gap-3">
+            <button
+              type="submit"
+              disabled={isLoading || !name.trim()}
+              className="flex-1 py-3 px-4 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? "Saving..." : isEditMode ? "Save Changes" : "Add Recipe"}
+            </button>
+            {!isEditMode && (
+              <button
+                type="submit"
+                onClick={() => {
+                  // Set schedule for today
+                  setScheduleDate(new Date().toISOString().split("T")[0]);
+                }}
+                disabled={isLoading || !name.trim()}
+                className="flex-1 py-3 px-4 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoading ? "Saving..." : "Save & Schedule Today"}
+              </button>
+            )}
+          </div>
         </form>
       </div>
     </div>
