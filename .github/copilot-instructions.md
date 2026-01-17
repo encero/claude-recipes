@@ -44,3 +44,5 @@ Focus on user-centric features: recipes, planning, history. Ensure all user-gene
 
 
 don't run bun server or convex dev they are running in the background at all times
+
+never ever add eslint disable comments, always fix the underlying issue, i don't want to see any eslint disable comments in the code ever

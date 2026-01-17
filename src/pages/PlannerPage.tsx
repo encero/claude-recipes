@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import type { Id } from "../../convex/_generated/dataModel";
+import type { Id, Doc } from "../../convex/_generated/dataModel";
 import {
   Check,
   ChevronLeft,
@@ -22,6 +22,9 @@ import {
   isToday,
 } from "date-fns";
 import { StarRating } from "../components/StarRating";
+
+type RecipeWithMeta = Doc<"recipes"> & { imageUrl: string | null; nextScheduled: number | null };
+type ScheduledMealWithRecipe = Doc<"scheduledMeals"> & { recipe: (Doc<"recipes"> & { imageUrl: string | null }) | null };
 
 export function PlannerPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -51,8 +54,7 @@ export function PlannerPage() {
 
   const getMealsForDay = (day: Date) => {
     return scheduledMeals?.filter(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (meal: any) =>
+      (meal: ScheduledMealWithRecipe) =>
         isSameDay(new Date(meal.scheduledFor), day)
     );
   };
@@ -158,8 +160,7 @@ export function PlannerPage() {
 
                 {meals && meals.length > 0 && (
                   <div className="space-y-2">
-                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                    {meals.map((meal: any) => (
+                    {meals.map((meal: ScheduledMealWithRecipe) => (
                       <button
                         key={meal._id}
                         onClick={() =>
@@ -305,8 +306,7 @@ export function PlannerPage() {
 
               {recipes && recipes.length > 0 && (
                 <div className="space-y-2">
-                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                  {recipes.map((recipe: any) => (
+                  {recipes.map((recipe: RecipeWithMeta) => (
                     <button
                       key={recipe._id}
                       onClick={() => handleAddMeal(recipe._id)}

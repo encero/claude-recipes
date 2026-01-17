@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import type { Doc } from "../../convex/_generated/dataModel";
 import { Plus, Search, UtensilsCrossed, X, CalendarDays, ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { format, isToday, isTomorrow } from "date-fns";
 import { RecipeCard } from "../components/RecipeCard";
 import { AddRecipeModal } from "../components/AddRecipeModal";
+
+type RecipeWithMeta = Doc<"recipes"> & { imageUrl: string | null; nextScheduled: number | null };
 
 function formatScheduledDate(timestamp: number): string {
   const date = new Date(timestamp);
@@ -20,8 +23,7 @@ export function RecipesPage() {
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredRecipes = recipes?.filter(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (recipe: any) =>
+    (recipe: RecipeWithMeta) =>
       recipe.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       recipe.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -30,10 +32,8 @@ export function RecipesPage() {
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
   const nextScheduledRecipe = recipes
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ?.filter((r: any) => r.nextScheduled && r.nextScheduled >= startOfToday.getTime())
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .sort((a: any, b: any) => (a.nextScheduled ?? 0) - (b.nextScheduled ?? 0))[0];
+    ?.filter((r: RecipeWithMeta) => r.nextScheduled && r.nextScheduled >= startOfToday.getTime())
+    .sort((a: RecipeWithMeta, b: RecipeWithMeta) => (a.nextScheduled ?? 0) - (b.nextScheduled ?? 0))[0];
 
   return (
     <div className="p-4">
@@ -139,8 +139,7 @@ export function RecipesPage() {
       {/* Recipe Grid */}
       {filteredRecipes && filteredRecipes.length > 0 && (
         <div className="grid grid-cols-2 gap-4">
-          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-          {filteredRecipes.map((recipe: any) => (
+          {filteredRecipes.map((recipe: RecipeWithMeta) => (
             <RecipeCard
               key={recipe._id}
               id={recipe._id}
