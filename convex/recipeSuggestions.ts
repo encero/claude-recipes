@@ -63,12 +63,16 @@ export const generateSuggestions = action({
 
 When suggesting recipes, be creative and diverse. Consider different cuisines, difficulty levels, and ingredients.
 
+LANGUAGE REQUIREMENTS:
+- Recipe names and descriptions MUST be written in Czech language.
+- Image prompts MUST be written in English (for image generation compatibility).
+
 IMPORTANT: You must respond with ONLY a valid JSON object in this exact format, no other text:
 {
   "recipes": [
     {
-      "name": "Recipe Name",
-      "description": "A brief description of the recipe (1-2 sentences)",
+      "name": "Název receptu v češtině",
+      "description": "Krátký popis receptu v češtině (1-2 věty)",
       "imagePrompt": "A short English phrase describing the dish for image generation (e.g., 'creamy mushroom risotto with parmesan')"
     }
   ]
