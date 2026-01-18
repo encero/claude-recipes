@@ -47,7 +47,7 @@ export function RecipeSuggestionsModal({ isOpen, onClose }: RecipeSuggestionsMod
     }
   }, [models, selectedModelId]);
 
-  const selectedModel = models?.find((m) => m.id === selectedModelId);
+  const selectedModel = models?.find((m: typeof models[number]) => m.id === selectedModelId);
 
   const handleGenerate = async () => {
     if (!prompt.trim() || !selectedModelId) return;
@@ -75,7 +75,7 @@ export function RecipeSuggestionsModal({ isOpen, onClose }: RecipeSuggestionsMod
         setUsage(result.usage);
       }
 
-      if (result.recipes.length === 0) {
+      if (result.recipes.length === 0 || result.parseError) {
         setError("No valid recipes were generated. The model's response couldn't be parsed. Please try again or use a different prompt.");
       }
     } catch (err) {

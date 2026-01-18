@@ -84,6 +84,7 @@ export interface SuggestedRecipe {
 export interface SuggestionResult {
   recipes: SuggestedRecipe[];
   rawResponse: string;
+  parseError?: boolean;
   usage?: {
     promptTokens: number;
     completionTokens: number;
@@ -147,6 +148,10 @@ Generate 3-8 recipe suggestions based on the user's request. Make sure not to su
 
 Please suggest some recipes based on my request above. Remember to respond with ONLY the JSON object.`;
 
+    // Set up timeout with AbortController (30 seconds)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
     try {
       const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
@@ -165,7 +170,10 @@ Please suggest some recipes based on my request above. Remember to respond with 
           temperature: 0.7,
           max_tokens: 2000,
         }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -177,6 +185,7 @@ Please suggest some recipes based on my request above. Remember to respond with 
 
       // Parse the JSON response
       let recipes: SuggestedRecipe[] = [];
+      let parseError = false;
       try {
         // Try to extract JSON from the response (handle markdown code blocks)
         let jsonStr = rawResponse;
@@ -194,8 +203,9 @@ Please suggest some recipes based on my request above. Remember to respond with 
           }));
         }
       } catch {
-        // If parsing fails, return empty recipes with the raw response
+        // If parsing fails, set parseError flag and return empty recipes with the raw response
         console.error("Failed to parse recipe suggestions:", rawResponse);
+        parseError = true;
       }
 
       // Calculate usage and cost
@@ -213,9 +223,14 @@ Please suggest some recipes based on my request above. Remember to respond with 
       return {
         recipes,
         rawResponse,
+        parseError,
         usage,
       };
     } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new Error("Request timed out after 30 seconds. Please try again.");
+      }
       const message = error instanceof Error ? error.message : String(error);
       throw new Error(`Failed to generate suggestions: ${message}`);
     }
