@@ -13,9 +13,10 @@ import type * as cookingHistory from "../cookingHistory.js";
 import type * as http from "../http.js";
 import type * as imageGeneration from "../imageGeneration.js";
 import type * as imageGenerationHelpers from "../imageGenerationHelpers.js";
+import type * as models from "../models.js";
 import type * as r2 from "../r2.js";
-import type * as recipes from "../recipes.js";
 import type * as recipeSuggestions from "../recipeSuggestions.js";
+import type * as recipes from "../recipes.js";
 import type * as scheduledMeals from "../scheduledMeals.js";
 import type * as users from "../users.js";
 
@@ -31,9 +32,10 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   imageGeneration: typeof imageGeneration;
   imageGenerationHelpers: typeof imageGenerationHelpers;
+  models: typeof models;
   r2: typeof r2;
-  recipes: typeof recipes;
   recipeSuggestions: typeof recipeSuggestions;
+  recipes: typeof recipes;
   scheduledMeals: typeof scheduledMeals;
   users: typeof users;
 }>;
