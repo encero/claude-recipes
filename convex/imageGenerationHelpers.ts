@@ -1,6 +1,5 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery } from "./_generated/server";
-import { requireAuth } from "./helpers";
 
 // Internal queries and mutations for image generation
 
@@ -103,10 +102,9 @@ export const createUploadedRecipeImage = internalMutation({
   args: {
     recipeId: v.id("recipes"),
     imageId: v.string(),
+    userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const userId = await requireAuth(ctx);
-
     return await ctx.db.insert("recipeImages", {
       recipeId: args.recipeId,
       imageId: args.imageId,
@@ -114,7 +112,7 @@ export const createUploadedRecipeImage = internalMutation({
       status: "completed",
       isAccepted: true,
       createdAt: Date.now(),
-      createdBy: userId,
+      createdBy: args.userId,
     });
   },
 });
@@ -183,7 +181,7 @@ export const updateRecipeImage = internalMutation({
       imageId: args.imageId,
       imageGenerationStatus: "completed",
       imageSource: "ai",
-      imagePrompt: args.imagePrompt,
+      ...(args.imagePrompt !== undefined && { imagePrompt: args.imagePrompt }),
       updatedAt: Date.now(),
     });
   },
@@ -218,7 +216,7 @@ export const setAcceptedImage = internalMutation({
       imageId: args.imageId,
       imageGenerationStatus: "completed",
       imageSource: "ai",
-      imagePrompt: args.imagePrompt,
+      ...(args.imagePrompt !== undefined && { imagePrompt: args.imagePrompt }),
       updatedAt: Date.now(),
     });
   },

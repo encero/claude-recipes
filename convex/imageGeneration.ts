@@ -3,17 +3,9 @@
 import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { getAuthUserId } from "@convex-dev/auth/server";
 import type { Doc, Id } from "./_generated/dataModel";
-import type { ActionCtx } from "./_generated/server";
 import { r2 } from "./r2";
-
-// Helper to require authentication in actions
-async function requireActionAuth(ctx: ActionCtx) {
-  const userId = await getAuthUserId(ctx);
-  if (!userId) throw new Error("Not authenticated");
-  return userId;
-}
+import { requireAuth } from "./helpers";
 
 const DAILY_LIMIT = 10;
 
@@ -65,7 +57,7 @@ function getUserFriendlyError(error: unknown): string {
 export const generateRecipeImage = action({
   args: { recipeId: v.id("recipes"), prompt: v.optional(v.string()) },
   handler: async (ctx, args): Promise<{ success: boolean; imageEntryId: Id<"recipeImages"> }> => {
-    const userId = await requireActionAuth(ctx);
+    const userId = await requireAuth(ctx);
 
     const recipe: Doc<"recipes"> | null = await ctx.runQuery(
       internal.imageGenerationHelpers.getRecipe,
@@ -171,7 +163,7 @@ export const acceptRecipeImage = action({
   args: { imageEntryId: v.id("recipeImages") },
   handler: async (ctx, args) => {
     try {
-      const userId = await requireActionAuth(ctx);
+      const userId = await requireAuth(ctx);
 
       const imageEntry = await ctx.runQuery(
         internal.imageGenerationHelpers.getRecipeImage,
@@ -179,11 +171,12 @@ export const acceptRecipeImage = action({
       );
       if (!imageEntry) throw new Error("Image entry not found");
       if (imageEntry.createdBy !== userId) throw new Error("Not authorized");
+      if (!imageEntry.imageId) throw new Error("Image is not yet available");
 
       await ctx.runMutation(internal.imageGenerationHelpers.setAcceptedImage, {
         recipeId: imageEntry.recipeId,
         imageEntryId: args.imageEntryId,
-        imageId: imageEntry.imageId!,
+        imageId: imageEntry.imageId,
         imagePrompt: imageEntry.prompt,
       });
 
@@ -198,11 +191,12 @@ export const createUploadedRecipeImage = action({
   args: { recipeId: v.id("recipes"), imageId: v.string() },
   handler: async (ctx, args): Promise<{ success: boolean }> => {
     try {
-      await requireActionAuth(ctx);
+      const userId = await requireAuth(ctx);
 
       await ctx.runMutation(internal.imageGenerationHelpers.createUploadedRecipeImage, {
         recipeId: args.recipeId,
         imageId: args.imageId,
+        userId,
       });
 
       return { success: true };
@@ -216,11 +210,11 @@ export const replaceRecipeImage = action({
   args: { recipeId: v.id("recipes"), imageId: v.string() },
   handler: async (ctx, args): Promise<{ success: boolean }> => {
     try {
-      await requireActionAuth(ctx);
+      const userId = await requireAuth(ctx);
 
       const imageEntryId = await ctx.runMutation(
         internal.imageGenerationHelpers.createUploadedRecipeImage,
-        { recipeId: args.recipeId, imageId: args.imageId }
+        { recipeId: args.recipeId, imageId: args.imageId, userId }
       );
 
       await ctx.runMutation(internal.imageGenerationHelpers.setAcceptedImage, {
