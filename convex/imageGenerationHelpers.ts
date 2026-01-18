@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery } from "./_generated/server";
-import { getAuthUserId } from "@convex-dev/auth/server";
+import { requireAuth } from "./helpers";
 
 // Internal queries and mutations for image generation
 
@@ -81,21 +81,6 @@ export const updateStatus = internalMutation({
   },
 });
 
-export const setImage = internalMutation({
-  args: {
-    recipeId: v.id("recipes"),
-    imageId: v.string(), // R2 object key
-  },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.recipeId, {
-      imageId: args.imageId,
-      imageGenerationStatus: "completed",
-      imageSource: "ai",
-      updatedAt: Date.now(),
-    });
-  },
-});
-
 export const createRecipeImage = internalMutation({
   args: {
     recipeId: v.id("recipes"),
@@ -117,11 +102,10 @@ export const createRecipeImage = internalMutation({
 export const createUploadedRecipeImage = internalMutation({
   args: {
     recipeId: v.id("recipes"),
-    imageId: v.string(), // R2 object key
+    imageId: v.string(),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    const userId = await requireAuth(ctx);
 
     return await ctx.db.insert("recipeImages", {
       recipeId: args.recipeId,
@@ -191,10 +175,45 @@ export const unacceptAllRecipeImages = internalMutation({
 export const updateRecipeImage = internalMutation({
   args: {
     recipeId: v.id("recipes"),
-    imageId: v.string(), // R2 object key
+    imageId: v.string(),
     imagePrompt: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    await ctx.db.patch(args.recipeId, {
+      imageId: args.imageId,
+      imageGenerationStatus: "completed",
+      imageSource: "ai",
+      imagePrompt: args.imagePrompt,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+// Consolidated: Accept an image as the recipe's default (combines 3 operations into 1)
+export const setAcceptedImage = internalMutation({
+  args: {
+    recipeId: v.id("recipes"),
+    imageEntryId: v.id("recipeImages"),
+    imageId: v.string(),
+    imagePrompt: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // 1. Unaccept all other images for this recipe
+    const images = await ctx.db
+      .query("recipeImages")
+      .withIndex("by_recipe", (q) => q.eq("recipeId", args.recipeId))
+      .collect();
+
+    for (const image of images) {
+      if (image.isAccepted) {
+        await ctx.db.patch(image._id, { isAccepted: false });
+      }
+    }
+
+    // 2. Accept the specified image
+    await ctx.db.patch(args.imageEntryId, { isAccepted: true });
+
+    // 3. Update recipe with the image
     await ctx.db.patch(args.recipeId, {
       imageId: args.imageId,
       imageGenerationStatus: "completed",

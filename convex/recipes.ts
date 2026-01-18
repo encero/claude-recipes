@@ -1,35 +1,32 @@
 import { v } from "convex/values";
 import { mutation, query, internalMutation } from "./_generated/server";
-import { getAuthUserId } from "@convex-dev/auth/server";
-import { getR2PublicUrl } from "./r2";
+import { requireAuth, filterUndefinedValues, withImageUrl } from "./helpers";
+import type { Id } from "./_generated/dataModel";
+import type { QueryCtx } from "./_generated/server";
+
+// Helper to get upcoming scheduled meals for a recipe
+async function getUpcomingMeals(ctx: QueryCtx, recipeId: Id<"recipes">) {
+  return await ctx.db
+    .query("scheduledMeals")
+    .withIndex("by_recipe", (q) => q.eq("recipeId", recipeId))
+    .filter((q) => q.eq(q.field("completed"), false))
+    .collect();
+}
 
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    const recipes = await ctx.db
-      .query("recipes")
-      .order("desc")
-      .collect();
+    const recipes = await ctx.db.query("recipes").order("desc").collect();
 
     return Promise.all(
       recipes.map(async (recipe) => {
-        // Get upcoming scheduled meals for this recipe
-        const scheduledMeals = await ctx.db
-          .query("scheduledMeals")
-          .withIndex("by_recipe", (q) => q.eq("recipeId", recipe._id))
-          .filter((q) => q.eq(q.field("completed"), false))
-          .collect();
-
-        // Find the next scheduled date
+        const scheduledMeals = await getUpcomingMeals(ctx, recipe._id);
         const nextScheduled = scheduledMeals
           .map((m) => m.scheduledFor)
           .sort((a, b) => a - b)[0];
 
         return {
-          ...recipe,
-          imageUrl: recipe.imageId
-            ? getR2PublicUrl(recipe.imageId)
-            : null,
+          ...withImageUrl(recipe),
           nextScheduled: nextScheduled ?? null,
         };
       })
@@ -43,18 +40,10 @@ export const get = query({
     const recipe = await ctx.db.get(args.id);
     if (!recipe) return null;
 
-    // Get upcoming scheduled meals for this recipe
-    const scheduledMeals = await ctx.db
-      .query("scheduledMeals")
-      .withIndex("by_recipe", (q) => q.eq("recipeId", args.id))
-      .filter((q) => q.eq(q.field("completed"), false))
-      .collect();
+    const scheduledMeals = await getUpcomingMeals(ctx, args.id);
 
     return {
-      ...recipe,
-      imageUrl: recipe.imageId
-        ? getR2PublicUrl(recipe.imageId)
-        : null,
+      ...withImageUrl(recipe),
       scheduledMeals: scheduledMeals.sort((a, b) => a.scheduledFor - b.scheduledFor),
     };
   },
@@ -69,12 +58,7 @@ export const getRecipeImages = query({
       .order("desc")
       .collect();
 
-    return images.map((image) => ({
-      ...image,
-      imageUrl: image.imageId
-        ? getR2PublicUrl(image.imageId)
-        : null,
-    }));
+    return images.map((image) => withImageUrl(image));
   },
 });
 
@@ -82,15 +66,14 @@ export const create = mutation({
   args: {
     name: v.string(),
     description: v.optional(v.string()),
-    imageId: v.optional(v.string()), // R2 object key
+    imageId: v.optional(v.string()),
     rating: v.optional(v.number()),
     imagePrompt: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
-
+    const userId = await requireAuth(ctx);
     const now = Date.now();
+
     return await ctx.db.insert("recipes", {
       name: args.name,
       description: args.description,
@@ -110,21 +93,16 @@ export const update = mutation({
     id: v.id("recipes"),
     name: v.optional(v.string()),
     description: v.optional(v.string()),
-    imageId: v.optional(v.string()), // R2 object key
+    imageId: v.optional(v.string()),
     rating: v.optional(v.number()),
     imagePrompt: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
-
+    await requireAuth(ctx);
     const { id, imageId, ...updates } = args;
-    const filteredUpdates = Object.fromEntries(
-      Object.entries(updates).filter(([, v]) => v !== undefined)
-    );
 
     await ctx.db.patch(id, {
-      ...filteredUpdates,
+      ...filterUndefinedValues(updates),
       ...(imageId && { imageId, imageSource: "upload" as const }),
       updatedAt: Date.now(),
     });
@@ -134,8 +112,7 @@ export const update = mutation({
 export const remove = mutation({
   args: { id: v.id("recipes") },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    await requireAuth(ctx);
 
     // Delete associated cooking history
     const history = await ctx.db
@@ -157,7 +134,6 @@ export const remove = mutation({
       await ctx.db.delete(meal._id);
     }
 
-    // Note: R2 files are not automatically deleted - they're cheap and can be cleaned up via lifecycle rules
     await ctx.db.delete(args.id);
   },
 });
