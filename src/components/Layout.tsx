@@ -9,12 +9,14 @@ import {
   Check,
   X,
   KeyRound,
+  Sparkles,
 } from "lucide-react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useTheme } from "../context/useTheme";
 import { themes } from "../context/themes";
+import { RecipeSuggestionsModal } from "./RecipeSuggestionsModal";
 
 export function Layout() {
   const { signOut } = useAuthActions();
@@ -22,6 +24,7 @@ export function Layout() {
   const { theme, setTheme } = useTheme();
   const [showThemeModal, setShowThemeModal] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
+  const [showSuggestionsModal, setShowSuggestionsModal] = useState(false);
   const [currentPin, setCurrentPin] = useState("");
   const [newPin, setNewPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
@@ -77,6 +80,13 @@ export function Layout() {
       <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-40">
         <h1 className="text-xl font-bold text-primary-600">Family Recipes</h1>
         <div className="flex items-center gap-1">
+          <button
+            onClick={() => setShowSuggestionsModal(true)}
+            className="p-2 text-purple-500 hover:text-purple-700 hover:bg-purple-50 rounded-lg transition-colors"
+            aria-label="AI recipe suggestions"
+          >
+            <Sparkles className="w-5 h-5" />
+          </button>
           <button
             onClick={() => setShowPinModal(true)}
             className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
@@ -311,6 +321,12 @@ export function Layout() {
           </div>
         </div>
       )}
+
+      {/* AI Recipe Suggestions Modal */}
+      <RecipeSuggestionsModal
+        isOpen={showSuggestionsModal}
+        onClose={() => setShowSuggestionsModal(false)}
+      />
     </div>
   );
 }
