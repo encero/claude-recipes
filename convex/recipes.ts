@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalMutation } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { getR2PublicUrl } from "./r2";
 
@@ -159,5 +159,33 @@ export const remove = mutation({
 
     // Note: R2 files are not automatically deleted - they're cheap and can be cleaned up via lifecycle rules
     await ctx.db.delete(args.id);
+  },
+});
+
+// Internal mutation to backfill lastCookedAt for all recipes
+export const recomputeLastCookedAt = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const recipes = await ctx.db.query("recipes").collect();
+    let updated = 0;
+
+    for (const recipe of recipes) {
+      // Get the most recent cooking history entry for this recipe
+      const latestHistory = await ctx.db
+        .query("cookingHistory")
+        .withIndex("by_recipe", (q) => q.eq("recipeId", recipe._id))
+        .order("desc")
+        .first();
+
+      const lastCookedAt = latestHistory?.cookedAt ?? undefined;
+
+      // Only update if the value is different
+      if (recipe.lastCookedAt !== lastCookedAt) {
+        await ctx.db.patch(recipe._id, { lastCookedAt });
+        updated++;
+      }
+    }
+
+    return { total: recipes.length, updated };
   },
 });

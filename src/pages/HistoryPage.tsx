@@ -1,12 +1,27 @@
-import { useQuery } from "convex/react";
+import { useState } from "react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 import { Link } from "react-router-dom";
-import { History, UtensilsCrossed } from "lucide-react";
+import { History, UtensilsCrossed, Pencil, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { StarRating } from "../components/StarRating";
+import { EditHistoryModal } from "../components/EditHistoryModal";
 
 export function HistoryPage() {
   const history = useQuery(api.cookingHistory.listRecent, { limit: 50 });
+  const removeHistory = useMutation(api.cookingHistory.remove);
+
+  const [editingHistory, setEditingHistory] = useState<{
+    _id: Id<"cookingHistory">;
+    notes?: string;
+    rating?: number;
+  } | null>(null);
+
+  const handleDeleteHistory = async (historyId: Id<"cookingHistory">) => {
+    if (!confirm("Delete this cooking history entry?")) return;
+    await removeHistory({ id: historyId });
+  };
 
   return (
     <div className="p-4">
@@ -38,14 +53,16 @@ export function HistoryPage() {
       {history && history.length > 0 && (
         <div className="space-y-3">
           {history.map((entry) => (
-            <Link
+            <div
               key={entry._id}
-              to={entry.recipe ? `/recipe/${entry.recipeId}` : "#"}
-              className="block bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"
+              className="bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"
             >
               <div className="flex">
                 {/* Image */}
-                <div className="w-24 h-24 bg-gray-100 flex-shrink-0">
+                <Link
+                  to={entry.recipe ? `/recipe/${entry.recipeId}` : "#"}
+                  className="w-24 h-24 bg-gray-100 flex-shrink-0"
+                >
                   {entry.recipe?.imageUrl ? (
                     <img
                       src={entry.recipe.imageUrl}
@@ -57,17 +74,36 @@ export function HistoryPage() {
                       <UtensilsCrossed className="w-8 h-8 text-gray-300" />
                     </div>
                   )}
-                </div>
+                </Link>
 
                 {/* Content */}
                 <div className="flex-1 p-3">
                   <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-semibold text-gray-900">
+                    <Link
+                      to={entry.recipe ? `/recipe/${entry.recipeId}` : "#"}
+                      className="font-semibold text-gray-900 hover:text-primary-600"
+                    >
                       {entry.recipe?.name ?? "Deleted Recipe"}
-                    </h3>
-                    <span className="text-xs text-gray-500 whitespace-nowrap">
-                      {format(new Date(entry.cookedAt), "MMM d")}
-                    </span>
+                    </Link>
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-gray-500 whitespace-nowrap">
+                        {format(new Date(entry.cookedAt), "MMM d")}
+                      </span>
+                      <button
+                        onClick={() => setEditingHistory(entry)}
+                        className="p-1 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600 transition-colors"
+                        aria-label="Edit history entry"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteHistory(entry._id)}
+                        className="p-1 hover:bg-red-50 rounded-full text-gray-400 hover:text-red-500 transition-colors"
+                        aria-label="Delete history entry"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
 
                   {entry.rating && (
@@ -83,10 +119,18 @@ export function HistoryPage() {
                   )}
                 </div>
               </div>
-            </Link>
+            </div>
           ))}
         </div>
       )}
+
+      {/* Edit History Modal */}
+      <EditHistoryModal
+        historyId={editingHistory?._id ?? null}
+        initialNotes={editingHistory?.notes}
+        initialRating={editingHistory?.rating}
+        onClose={() => setEditingHistory(null)}
+      />
     </div>
   );
 }

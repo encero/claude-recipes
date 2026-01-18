@@ -1,14 +1,63 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Doc } from "../../convex/_generated/dataModel";
-import { Plus, Search, UtensilsCrossed, X, CalendarDays, ChevronRight } from "lucide-react";
+import { Plus, Search, UtensilsCrossed, X, CalendarDays, ChevronRight, ChevronDown } from "lucide-react";
 import { Link } from "react-router-dom";
 import { format, isToday, isTomorrow } from "date-fns";
 import { RecipeCard } from "../components/RecipeCard";
 import { AddRecipeModal } from "../components/AddRecipeModal";
 
 type RecipeWithMeta = Doc<"recipes"> & { imageUrl: string | null; nextScheduled: number | null };
+
+const SORT_STORAGE_KEY = "recipe-sort";
+
+const SORT_OPTIONS: {
+  id: string;
+  label: string;
+  sortFn: (a: RecipeWithMeta, b: RecipeWithMeta) => number;
+}[] = [
+  {
+    id: "newest",
+    label: "Newest",
+    sortFn: (a, b) => b.createdAt - a.createdAt,
+  },
+  {
+    id: "alphabetical",
+    label: "A to Z",
+    sortFn: (a, b) => a.name.localeCompare(b.name),
+  },
+  {
+    id: "highest-rated",
+    label: "Highest Rated",
+    sortFn: (a, b) => {
+      if (a.rating == null && b.rating == null) return 0;
+      if (a.rating == null) return 1;
+      if (b.rating == null) return -1;
+      return b.rating - a.rating;
+    },
+  },
+  {
+    id: "recently-cooked",
+    label: "Recently Cooked",
+    sortFn: (a, b) => {
+      if (a.lastCookedAt == null && b.lastCookedAt == null) return 0;
+      if (a.lastCookedAt == null) return 1;
+      if (b.lastCookedAt == null) return -1;
+      return b.lastCookedAt - a.lastCookedAt;
+    },
+  },
+  {
+    id: "needs-cooking",
+    label: "Needs Cooking",
+    sortFn: (a, b) => {
+      if (a.lastCookedAt == null && b.lastCookedAt == null) return 0;
+      if (a.lastCookedAt == null) return -1;
+      if (b.lastCookedAt == null) return 1;
+      return a.lastCookedAt - b.lastCookedAt;
+    },
+  },
+];
 
 function formatScheduledDate(timestamp: number): string {
   const date = new Date(timestamp);
@@ -21,12 +70,29 @@ export function RecipesPage() {
   const recipes = useQuery(api.recipes.list);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortOption, setSortOption] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem(SORT_STORAGE_KEY);
+      if (saved && SORT_OPTIONS.some((opt) => opt.id === saved)) {
+        return saved;
+      }
+    }
+    return "newest";
+  });
 
-  const filteredRecipes = recipes?.filter(
-    (recipe: RecipeWithMeta) =>
-      recipe.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      recipe.description?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  useEffect(() => {
+    localStorage.setItem(SORT_STORAGE_KEY, sortOption);
+  }, [sortOption]);
+
+  const currentSort = SORT_OPTIONS.find((opt) => opt.id === sortOption) ?? SORT_OPTIONS[0];
+
+  const filteredRecipes = recipes
+    ?.filter(
+      (recipe: RecipeWithMeta) =>
+        recipe.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        recipe.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort(currentSort.sortFn);
 
   // Find the next scheduled recipe (soonest upcoming, including today)
   const startOfToday = new Date();
@@ -81,24 +147,40 @@ export function RecipesPage() {
         </Link>
       )}
 
-      {/* Search */}
-      <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search recipes..."
-          className="w-full pl-10 pr-10 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-        />
-        {searchQuery && (
-          <button
-            onClick={() => setSearchQuery("")}
-            className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 hover:text-gray-600"
+      {/* Search and Sort */}
+      <div className="flex gap-2 mb-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search recipes..."
+            className="w-full pl-10 pr-10 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
+        </div>
+        <div className="relative">
+          <select
+            value={sortOption}
+            onChange={(e) => setSortOption(e.target.value)}
+            className="appearance-none h-full pl-3 pr-8 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-700 text-sm cursor-pointer"
           >
-            <X className="w-5 h-5" />
-          </button>
-        )}
+            {SORT_OPTIONS.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+        </div>
       </div>
 
       {/* Loading State */}
@@ -138,7 +220,7 @@ export function RecipesPage() {
 
       {/* Recipe Grid */}
       {filteredRecipes && filteredRecipes.length > 0 && (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {filteredRecipes.map((recipe: RecipeWithMeta) => (
             <RecipeCard
               key={recipe._id}
@@ -148,6 +230,7 @@ export function RecipesPage() {
               imageUrl={recipe.imageUrl}
               rating={recipe.rating}
               scheduledFor={recipe.nextScheduled ?? undefined}
+              lastCookedAt={recipe.lastCookedAt}
               imageGenerationStatus={recipe.imageGenerationStatus}
             />
           ))}

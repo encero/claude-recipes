@@ -20,7 +20,8 @@ import {
 import { AddRecipeModal } from "../components/AddRecipeModal";
 import { StarRating } from "../components/StarRating";
 import { ImageStudio } from "../components/ImageStudio";
-import { format, isToday, isTomorrow, differenceInDays } from "date-fns";
+import { EditHistoryModal } from "../components/EditHistoryModal";
+import { format, isToday, isTomorrow, differenceInDays, formatDistanceToNow } from "date-fns";
 
 function formatScheduledDate(timestamp: number): string {
   const date = new Date(timestamp);
@@ -61,6 +62,7 @@ export function RecipeDetailPage() {
   const updateRecipe = useMutation(api.recipes.update);
   const deleteRecipe = useMutation(api.recipes.remove);
   const addHistory = useMutation(api.cookingHistory.add);
+  const removeHistory = useMutation(api.cookingHistory.remove);
   const scheduleMeal = useMutation(api.scheduledMeals.schedule);
   const removeScheduled = useMutation(api.scheduledMeals.remove);
   const generateRecipeImage = useAction(api.imageGeneration.generateRecipeImage);
@@ -77,6 +79,11 @@ export function RecipeDetailPage() {
   const [cookRating, setCookRating] = useState<number | null>(null);
   const [selectedScheduledMeal, setSelectedScheduledMeal] = useState<Id<"scheduledMeals"> | "none" | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [editingHistory, setEditingHistory] = useState<{
+    _id: Id<"cookingHistory">;
+    notes?: string;
+    rating?: number;
+  } | null>(null);
 
   if (recipe === undefined) {
     return (
@@ -146,6 +153,11 @@ export function RecipeDetailPage() {
 
   const handleRemoveScheduled = async (scheduledId: Id<"scheduledMeals">) => {
     await removeScheduled({ id: scheduledId });
+  };
+
+  const handleDeleteHistory = async (historyId: Id<"cookingHistory">) => {
+    if (!confirm("Delete this cooking history entry?")) return;
+    await removeHistory({ id: historyId });
   };
 
   // ImageStudio handlers
@@ -249,6 +261,14 @@ export function RecipeDetailPage() {
           <p className="text-gray-600 mt-2">{recipe.description}</p>
         )}
 
+        {/* Last Cooked */}
+        {recipe.lastCookedAt && (
+          <div className="mt-3 flex items-center gap-2 text-sm text-gray-500">
+            <ChefHat className="w-4 h-4" />
+            <span>Last cooked {formatDistanceToNow(new Date(recipe.lastCookedAt), { addSuffix: true })}</span>
+          </div>
+        )}
+
         {/* Scheduled Meals */}
         {recipe.scheduledMeals && recipe.scheduledMeals.length > 0 && (
           <div className="mt-5 space-y-2">
@@ -346,9 +366,25 @@ export function RecipeDetailPage() {
                     <span className="text-sm text-gray-500">
                       {format(new Date(entry.cookedAt), "MMM d, yyyy")}
                     </span>
-                    {entry.rating && (
-                      <StarRating rating={entry.rating} size="sm" readonly />
-                    )}
+                    <div className="flex items-center gap-2">
+                      {entry.rating && (
+                        <StarRating rating={entry.rating} size="sm" readonly />
+                      )}
+                      <button
+                        onClick={() => setEditingHistory(entry)}
+                        className="p-1.5 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600 transition-colors"
+                        aria-label="Edit history entry"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteHistory(entry._id)}
+                        className="p-1.5 hover:bg-red-50 rounded-full text-gray-400 hover:text-red-500 transition-colors"
+                        aria-label="Delete history entry"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                   {entry.notes && (
                     <p className="text-gray-700 mt-2 text-sm">{entry.notes}</p>
@@ -513,6 +549,14 @@ export function RecipeDetailPage() {
         isOpen={showEditModal}
         onClose={() => setShowEditModal(false)}
         editRecipe={recipe}
+      />
+
+      {/* Edit History Modal */}
+      <EditHistoryModal
+        historyId={editingHistory?._id ?? null}
+        initialNotes={editingHistory?.notes}
+        initialRating={editingHistory?.rating}
+        onClose={() => setEditingHistory(null)}
       />
 
       {/* Image Studio */}

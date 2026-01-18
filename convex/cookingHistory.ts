@@ -52,9 +52,14 @@ export const add = mutation({
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
 
+    const cookedAt = args.cookedAt ?? Date.now();
+
+    // Update the recipe's lastCookedAt field
+    await ctx.db.patch(args.recipeId, { lastCookedAt: cookedAt });
+
     return await ctx.db.insert("cookingHistory", {
       recipeId: args.recipeId,
-      cookedAt: args.cookedAt ?? Date.now(),
+      cookedAt,
       notes: args.notes,
       rating: args.rating,
       cookedBy: userId,

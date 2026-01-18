@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
-import { UtensilsCrossed, CalendarDays, Loader2 } from "lucide-react";
+import { UtensilsCrossed, CalendarDays, Loader2, ChefHat } from "lucide-react";
 import { StarRating } from "./StarRating";
-import { format, isToday, isTomorrow } from "date-fns";
+import { format, isToday, isTomorrow, formatDistanceToNow } from "date-fns";
 import type { Id } from "../../convex/_generated/dataModel";
 
 interface RecipeCardProps {
@@ -11,6 +11,7 @@ interface RecipeCardProps {
   imageUrl?: string | null;
   rating?: number | null;
   scheduledFor?: number;
+  lastCookedAt?: number | null;
   imageGenerationStatus?: "generating" | "completed" | "failed" | null;
   onClick?: () => void;
 }
@@ -28,6 +29,7 @@ export function RecipeCard({
   imageUrl,
   rating,
   scheduledFor,
+  lastCookedAt,
   imageGenerationStatus,
   onClick,
 }: RecipeCardProps) {
@@ -64,6 +66,14 @@ export function RecipeCard({
         {rating && (
           <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm px-2 py-1 rounded-full">
             <StarRating rating={rating} size="sm" readonly />
+          </div>
+        )}
+
+        {/* Last Cooked Badge */}
+        {lastCookedAt && (
+          <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-sm px-2 py-1 rounded-full flex items-center gap-1 text-white text-xs">
+            <ChefHat className="w-3 h-3" />
+            {formatDistanceToNow(new Date(lastCookedAt), { addSuffix: true })}
           </div>
         )}
       </div>

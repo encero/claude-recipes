@@ -23,6 +23,7 @@ export default defineSchema({
     rating: v.optional(v.number()), // 1-5 stars
     createdAt: v.number(),
     updatedAt: v.number(),
+    lastCookedAt: v.optional(v.number()),
     createdBy: v.id("users"),
     imageGenerationStatus: v.optional(
       v.union(
