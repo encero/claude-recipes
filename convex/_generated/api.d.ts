@@ -15,6 +15,7 @@ import type * as imageGeneration from "../imageGeneration.js";
 import type * as imageGenerationHelpers from "../imageGenerationHelpers.js";
 import type * as r2 from "../r2.js";
 import type * as recipes from "../recipes.js";
+import type * as recipeSuggestions from "../recipeSuggestions.js";
 import type * as scheduledMeals from "../scheduledMeals.js";
 import type * as users from "../users.js";
 
@@ -32,6 +33,7 @@ declare const fullApi: ApiFromModules<{
   imageGenerationHelpers: typeof imageGenerationHelpers;
   r2: typeof r2;
   recipes: typeof recipes;
+  recipeSuggestions: typeof recipeSuggestions;
   scheduledMeals: typeof scheduledMeals;
   users: typeof users;
 }>;
