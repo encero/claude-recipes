@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -19,13 +19,15 @@ export function EditHistoryModal({
   onClose,
 }: EditHistoryModalProps) {
   const updateHistory = useMutation(api.cookingHistory.update);
+  const [prevHistoryId, setPrevHistoryId] = useState(historyId);
   const [notes, setNotes] = useState(initialNotes);
   const [rating, setRating] = useState<number | null>(initialRating);
 
-  useEffect(() => {
+  if (historyId !== prevHistoryId) {
+    setPrevHistoryId(historyId);
     setNotes(initialNotes);
     setRating(initialRating);
-  }, [initialNotes, initialRating]);
+  }
 
   if (!historyId) return null;
 
