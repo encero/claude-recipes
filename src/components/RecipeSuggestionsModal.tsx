@@ -25,7 +25,7 @@ function formatPricePerMillion(price: number): string {
 }
 
 export function RecipeSuggestionsModal({ isOpen, onClose }: RecipeSuggestionsModalProps) {
-  const models = useQuery(api.recipeSuggestions.getModels);
+  const models = useQuery(api.models.getModels);
   const recipes = useQuery(api.recipes.list);
   const generateSuggestions = useAction(api.recipeSuggestions.generateSuggestions);
   const createRecipe = useMutation(api.recipes.create);
@@ -174,7 +174,7 @@ export function RecipeSuggestionsModal({ isOpen, onClose }: RecipeSuggestionsMod
                 disabled={isLoading}
                 className="appearance-none w-full px-4 py-3 pr-10 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
               >
-                {models?.map((model) => (
+                {models?.map((model: typeof models[number]) => (
                   <option key={model.id} value={model.id}>
                     {model.name}
                   </option>
