@@ -2,12 +2,11 @@ import { useState, useEffect } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Doc } from "../../convex/_generated/dataModel";
-import { Plus, Search, UtensilsCrossed, X, CalendarDays, ChevronRight, ChevronDown, Sparkles } from "lucide-react";
+import { Plus, Search, UtensilsCrossed, X, CalendarDays, ChevronRight, ChevronDown } from "lucide-react";
 import { Link } from "react-router-dom";
 import { format, isToday, isTomorrow } from "date-fns";
 import { RecipeCard } from "../components/RecipeCard";
 import { AddRecipeModal } from "../components/AddRecipeModal";
-import { RecipeSuggestionsModal } from "../components/RecipeSuggestionsModal";
 
 type RecipeWithMeta = Doc<"recipes"> & { imageUrl: string | null; nextScheduled: number | null };
 
@@ -70,7 +69,6 @@ function formatScheduledDate(timestamp: number): string {
 export function RecipesPage() {
   const recipes = useQuery(api.recipes.list);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isSuggestionsModalOpen, setIsSuggestionsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortOption, setSortOption] = useState(() => {
     if (typeof window !== "undefined") {
@@ -239,36 +237,19 @@ export function RecipesPage() {
         </div>
       )}
 
-      {/* Floating Buttons */}
-      <div className="fixed bottom-24 right-4 flex flex-col gap-3 z-40">
-        {/* AI Suggestions Button */}
-        <button
-          onClick={() => setIsSuggestionsModalOpen(true)}
-          className="w-14 h-14 bg-gradient-to-br from-purple-500 to-pink-500 text-white rounded-full shadow-lg hover:from-purple-600 hover:to-pink-600 transition-colors flex items-center justify-center"
-          aria-label="AI recipe suggestions"
-        >
-          <Sparkles className="w-6 h-6" />
-        </button>
-        {/* Add Recipe Button */}
-        <button
-          onClick={() => setIsAddModalOpen(true)}
-          className="w-14 h-14 bg-primary-600 text-white rounded-full shadow-lg hover:bg-primary-700 transition-colors flex items-center justify-center"
-          aria-label="Add recipe"
-        >
-          <Plus className="w-6 h-6" />
-        </button>
-      </div>
+      {/* Floating Add Button */}
+      <button
+        onClick={() => setIsAddModalOpen(true)}
+        className="fixed bottom-24 right-4 w-14 h-14 bg-primary-600 text-white rounded-full shadow-lg hover:bg-primary-700 transition-colors flex items-center justify-center z-40"
+        aria-label="Add recipe"
+      >
+        <Plus className="w-6 h-6" />
+      </button>
 
       {/* Add Recipe Modal */}
       <AddRecipeModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
-      />
-
-      {/* AI Recipe Suggestions Modal */}
-      <RecipeSuggestionsModal
-        isOpen={isSuggestionsModalOpen}
-        onClose={() => setIsSuggestionsModalOpen(false)}
       />
     </div>
   );
