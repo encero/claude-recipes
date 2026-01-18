@@ -3,7 +3,7 @@
 import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { OPENROUTER_MODELS } from "./models";
+import { api } from "./_generated/api";
 
 // Recipe suggestion result schema
 export interface SuggestedRecipe {
@@ -45,8 +45,9 @@ export const generateSuggestions = action({
       throw new Error("OpenRouter API key not configured. Please add OPENROUTER_API_KEY to your environment.");
     }
 
-    // Find the model to get pricing
-    const model = OPENROUTER_MODELS.find((m) => m.id === args.modelId);
+    // Find the model to get pricing from database
+    const models = await ctx.runQuery(api.models.getModels);
+    const model = models.find((m) => m.id === args.modelId);
     if (!model) {
       throw new Error(`Unknown model: ${args.modelId}`);
     }

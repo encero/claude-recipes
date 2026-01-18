@@ -83,4 +83,13 @@ export default defineSchema({
     date: v.string(), // "2026-01-17" format
     count: v.number(),
   }).index("by_date", ["date"]),
+
+  openRouterModels: defineTable({
+    modelId: v.string(), // OpenRouter model ID (e.g., "openai/gpt-oss-120b:free")
+    name: v.string(), // Display name
+    inputPrice: v.number(), // Price per 1M input tokens
+    outputPrice: v.number(), // Price per 1M output tokens
+    contextWindow: v.number(), // Maximum context length
+    lastUpdated: v.number(), // Timestamp of last update
+  }).index("by_model_id", ["modelId"]),
 });

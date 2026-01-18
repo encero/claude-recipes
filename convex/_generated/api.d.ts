@@ -10,10 +10,12 @@
 
 import type * as auth from "../auth.js";
 import type * as cookingHistory from "../cookingHistory.js";
+import type * as crons from "../crons.js";
 import type * as http from "../http.js";
 import type * as imageGeneration from "../imageGeneration.js";
 import type * as imageGenerationHelpers from "../imageGenerationHelpers.js";
 import type * as models from "../models.js";
+import type * as modelsSync from "../modelsSync.js";
 import type * as r2 from "../r2.js";
 import type * as recipeSuggestions from "../recipeSuggestions.js";
 import type * as recipes from "../recipes.js";
@@ -29,10 +31,12 @@ import type {
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   cookingHistory: typeof cookingHistory;
+  crons: typeof crons;
   http: typeof http;
   imageGeneration: typeof imageGeneration;
   imageGenerationHelpers: typeof imageGenerationHelpers;
   models: typeof models;
+  modelsSync: typeof modelsSync;
   r2: typeof r2;
   recipeSuggestions: typeof recipeSuggestions;
   recipes: typeof recipes;
