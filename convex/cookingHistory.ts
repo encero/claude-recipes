@@ -42,6 +42,7 @@ export const add = mutation({
     const userId = await requireAuth(ctx);
     const cookedAt = args.cookedAt ?? Date.now();
 
+    // Update the recipe's lastCookedAt field
     await ctx.db.patch(args.recipeId, { lastCookedAt: cookedAt });
 
     return await ctx.db.insert("cookingHistory", {

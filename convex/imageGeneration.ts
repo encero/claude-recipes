@@ -57,19 +57,23 @@ function getUserFriendlyError(error: unknown): string {
 export const generateRecipeImage = action({
   args: { recipeId: v.id("recipes"), prompt: v.optional(v.string()) },
   handler: async (ctx, args): Promise<{ success: boolean; imageEntryId: Id<"recipeImages"> }> => {
+    // 1. Check user is authenticated
     const userId = await requireAuth(ctx);
 
+    // 2. Get recipe and verify it exists
     const recipe: Doc<"recipes"> | null = await ctx.runQuery(
       internal.imageGenerationHelpers.getRecipe,
       { recipeId: args.recipeId }
     );
     if (!recipe) throw new Error("Recipe not found");
 
+    // 3. Check user has permission
     const user = await ctx.runQuery(internal.imageGenerationHelpers.getUser, { userId });
     if (user?.canGenerateImages === false) {
       throw new Error("Image generation disabled for this account");
     }
 
+    // 4. Check daily limit
     const today = new Date().toISOString().split("T")[0];
     const dailyCount = await ctx.runQuery(
       internal.imageGenerationHelpers.getDailyCount,
@@ -79,12 +83,16 @@ export const generateRecipeImage = action({
       throw new Error("Daily image generation limit reached (10/day)");
     }
 
+    // 5. Increment counter BEFORE calling API
     await ctx.runMutation(internal.imageGenerationHelpers.incrementDailyCount, { date: today });
+
+    // 6. Set recipe status to generating
     await ctx.runMutation(internal.imageGenerationHelpers.updateStatus, {
       recipeId: args.recipeId,
       status: "generating",
     });
 
+    // 7. Create recipe image entry
     const prompt: string = args.prompt || recipe.imagePrompt || recipe.name;
     const imageEntryId: Id<"recipeImages"> = await ctx.runMutation(
       internal.imageGenerationHelpers.createRecipeImage,
@@ -92,6 +100,7 @@ export const generateRecipeImage = action({
     );
 
     try {
+      // 8. Call Fal AI with prompt
       const fullPrompt = `Professional food photography of ${prompt}, appetizing presentation, natural lighting, shallow depth of field, high quality, on a beautiful plate`;
 
       const apiKey = process.env.FAL_API_KEY;
@@ -121,12 +130,16 @@ export const generateRecipeImage = action({
       const imageUrl = result.images?.[0]?.url;
       if (!imageUrl) throw new Error("No image URL in response");
 
+      // 9. Download image from returned URL
       const imageResponse = await fetch(imageUrl);
       if (!imageResponse.ok) throw new Error("Failed to download generated image");
 
       const imageBlob = await imageResponse.blob();
+
+      // 10. Upload to R2 storage
       const key = await r2.store(ctx, imageBlob);
 
+      // 11. Update recipe image entry with imageId and status "completed"
       await ctx.runMutation(internal.imageGenerationHelpers.completeRecipeImage, {
         imageEntryId,
         imageId: key,
@@ -149,11 +162,15 @@ export const generateRecipeImage = action({
 
       return { success: true, imageEntryId };
     } catch (error) {
+      // On error: set image status to "failed"
       await ctx.runMutation(internal.imageGenerationHelpers.failRecipeImage, { imageEntryId });
+
+      // Also update recipe status to failed
       await ctx.runMutation(internal.imageGenerationHelpers.updateStatus, {
         recipeId: args.recipeId,
         status: "failed",
       });
+
       throw new Error(getUserFriendlyError(error));
     }
   },
@@ -188,11 +205,15 @@ export const acceptRecipeImage = action({
 });
 
 export const createUploadedRecipeImage = action({
-  args: { recipeId: v.id("recipes"), imageId: v.string() },
+  args: {
+    recipeId: v.id("recipes"),
+    imageId: v.string(), // R2 object key
+  },
   handler: async (ctx, args): Promise<{ success: boolean }> => {
     try {
       const userId = await requireAuth(ctx);
 
+      // Create uploaded image entry and auto-accept it
       await ctx.runMutation(internal.imageGenerationHelpers.createUploadedRecipeImage, {
         recipeId: args.recipeId,
         imageId: args.imageId,
@@ -207,16 +228,21 @@ export const createUploadedRecipeImage = action({
 });
 
 export const replaceRecipeImage = action({
-  args: { recipeId: v.id("recipes"), imageId: v.string() },
+  args: {
+    recipeId: v.id("recipes"),
+    imageId: v.string(), // R2 object key
+  },
   handler: async (ctx, args): Promise<{ success: boolean }> => {
     try {
       const userId = await requireAuth(ctx);
 
+      // Create uploaded image entry
       const imageEntryId = await ctx.runMutation(
         internal.imageGenerationHelpers.createUploadedRecipeImage,
         { recipeId: args.recipeId, imageId: args.imageId, userId }
       );
 
+      // Accept this image as the recipe's default
       await ctx.runMutation(internal.imageGenerationHelpers.setAcceptedImage, {
         recipeId: args.recipeId,
         imageEntryId,

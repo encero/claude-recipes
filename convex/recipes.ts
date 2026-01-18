@@ -21,6 +21,7 @@ export const list = query({
     return Promise.all(
       recipes.map(async (recipe) => {
         const scheduledMeals = await getUpcomingMeals(ctx, recipe._id);
+        // Find the next scheduled date
         const nextScheduled = scheduledMeals
           .map((m) => m.scheduledFor)
           .sort((a, b) => a - b)[0];
@@ -66,7 +67,7 @@ export const create = mutation({
   args: {
     name: v.string(),
     description: v.optional(v.string()),
-    imageId: v.optional(v.string()),
+    imageId: v.optional(v.string()), // R2 object key
     rating: v.optional(v.number()),
     imagePrompt: v.optional(v.string()),
   },
@@ -93,7 +94,7 @@ export const update = mutation({
     id: v.id("recipes"),
     name: v.optional(v.string()),
     description: v.optional(v.string()),
-    imageId: v.optional(v.string()),
+    imageId: v.optional(v.string()), // R2 object key
     rating: v.optional(v.number()),
     imagePrompt: v.optional(v.string()),
   },

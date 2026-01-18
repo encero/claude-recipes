@@ -86,6 +86,7 @@ export const markCompleted = mutation({
 
     await ctx.db.patch(args.id, { completed: true });
 
+    // Optionally add to cooking history
     if (args.addToHistory) {
       await ctx.db.insert("cookingHistory", {
         recipeId: meal.recipeId,

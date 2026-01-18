@@ -101,7 +101,7 @@ export const createRecipeImage = internalMutation({
 export const createUploadedRecipeImage = internalMutation({
   args: {
     recipeId: v.id("recipes"),
-    imageId: v.string(),
+    imageId: v.string(), // R2 object key
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
