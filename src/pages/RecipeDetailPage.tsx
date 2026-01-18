@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import { useUploadFile } from "@convex-dev/r2/react";
 import type { Id } from "../../convex/_generated/dataModel";
 import {
   ArrowLeft,
@@ -64,8 +65,8 @@ export function RecipeDetailPage() {
   const removeScheduled = useMutation(api.scheduledMeals.remove);
   const generateRecipeImage = useAction(api.imageGeneration.generateRecipeImage);
   const acceptRecipeImage = useAction(api.imageGeneration.acceptRecipeImage);
-  const generateUploadUrlMutation = useMutation(api.r2.generateUploadUrl);
   const replaceRecipeImage = useAction(api.imageGeneration.replaceRecipeImage);
+  const uploadFile = useUploadFile(api.r2);
 
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [showCookModal, setShowCookModal] = useState(false);
@@ -153,13 +154,7 @@ export function RecipeDetailPage() {
   };
 
   const handleStudioUpload = async (file: File) => {
-    const { url } = await generateUploadUrlMutation();
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": file.type },
-      body: file,
-    });
-    const { storageId } = await response.json();
+    const storageId = await uploadFile(file);
     await replaceRecipeImage({
       recipeId: recipe._id,
       imageId: storageId,
