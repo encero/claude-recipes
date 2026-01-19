@@ -1,36 +1,33 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { getAuthUserId } from "@convex-dev/auth/server";
+import { requireAuth, filterUndefinedValues, withImageUrl } from "./helpers";
+import type { Doc } from "./_generated/dataModel";
+import type { QueryCtx } from "./_generated/server";
+
+// Helper to enrich a meal with its recipe data
+async function enrichMealWithRecipe(
+  ctx: QueryCtx,
+  meal: Doc<"scheduledMeals">
+) {
+  const recipe = await ctx.db.get(meal.recipeId);
+  return {
+    ...meal,
+    recipe: recipe ? withImageUrl(recipe) : null,
+  };
+}
 
 export const list = query({
   args: {
     includeCompleted: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const mealsQuery = ctx.db.query("scheduledMeals").order("asc");
-
-    const meals = await mealsQuery.collect();
+    const meals = await ctx.db.query("scheduledMeals").order("asc").collect();
 
     const filteredMeals = args.includeCompleted
       ? meals
       : meals.filter((m) => !m.completed);
 
-    return Promise.all(
-      filteredMeals.map(async (meal) => {
-        const recipe = await ctx.db.get(meal.recipeId);
-        return {
-          ...meal,
-          recipe: recipe
-            ? {
-                ...recipe,
-                imageUrl: recipe.imageId
-                  ? await ctx.storage.getUrl(recipe.imageId)
-                  : null,
-              }
-            : null,
-        };
-      })
-    );
+    return Promise.all(filteredMeals.map((meal) => enrichMealWithRecipe(ctx, meal)));
   },
 });
 
@@ -51,22 +48,7 @@ export const listByDateRange = query({
       )
       .collect();
 
-    return Promise.all(
-      meals.map(async (meal) => {
-        const recipe = await ctx.db.get(meal.recipeId);
-        return {
-          ...meal,
-          recipe: recipe
-            ? {
-                ...recipe,
-                imageUrl: recipe.imageId
-                  ? await ctx.storage.getUrl(recipe.imageId)
-                  : null,
-              }
-            : null,
-        };
-      })
-    );
+    return Promise.all(meals.map((meal) => enrichMealWithRecipe(ctx, meal)));
   },
 });
 
@@ -77,8 +59,7 @@ export const schedule = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    const userId = await requireAuth(ctx);
 
     return await ctx.db.insert("scheduledMeals", {
       recipeId: args.recipeId,
@@ -98,8 +79,7 @@ export const markCompleted = mutation({
     historyRating: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    const userId = await requireAuth(ctx);
 
     const meal = await ctx.db.get(args.id);
     if (!meal) throw new Error("Scheduled meal not found");
@@ -126,24 +106,17 @@ export const update = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    await requireAuth(ctx);
 
     const { id, ...updates } = args;
-    const filteredUpdates = Object.fromEntries(
-      Object.entries(updates).filter(([, v]) => v !== undefined)
-    );
-
-    await ctx.db.patch(id, filteredUpdates);
+    await ctx.db.patch(id, filterUndefinedValues(updates));
   },
 });
 
 export const remove = mutation({
   args: { id: v.id("scheduledMeals") },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
-
+    await requireAuth(ctx);
     await ctx.db.delete(args.id);
   },
 });

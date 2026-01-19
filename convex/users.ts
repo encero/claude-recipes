@@ -1,7 +1,7 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { getAuthUserId } from "@convex-dev/auth/server";
 import { Scrypt } from "lucia";
+import { requireAuth } from "./helpers";
 
 export const getUserByEmail = query({
   args: { email: v.string() },
@@ -22,12 +22,8 @@ export const changePin = mutation({
     newPin: v.string(),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
+    const userId = await requireAuth(ctx);
 
-    // Find the auth account for this user
     const authAccount = await ctx.db
       .query("authAccounts")
       .filter((q) => q.eq(q.field("userId"), userId))
@@ -37,13 +33,11 @@ export const changePin = mutation({
       throw new Error("Account not found");
     }
 
-    // Verify current PIN
     const isValid = await scrypt.verify(authAccount.secret, args.currentPin);
     if (!isValid) {
       throw new Error("Current PIN is incorrect");
     }
 
-    // Hash new PIN and update
     const newHash = await scrypt.hash(args.newPin);
     await ctx.db.patch(authAccount._id, { secret: newHash });
 

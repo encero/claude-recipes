@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { getAuthUserId } from "@convex-dev/auth/server";
+import { requireAuth, filterUndefinedValues, withImageUrl } from "./helpers";
 
 export const listByRecipe = query({
   args: { recipeId: v.id("recipes") },
@@ -17,24 +17,14 @@ export const listRecent = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
     const limit = args.limit ?? 10;
-    const history = await ctx.db
-      .query("cookingHistory")
-      .order("desc")
-      .take(limit);
+    const history = await ctx.db.query("cookingHistory").order("desc").take(limit);
 
     return Promise.all(
       history.map(async (entry) => {
         const recipe = await ctx.db.get(entry.recipeId);
         return {
           ...entry,
-          recipe: recipe
-            ? {
-                ...recipe,
-                imageUrl: recipe.imageId
-                  ? await ctx.storage.getUrl(recipe.imageId)
-                  : null,
-              }
-            : null,
+          recipe: recipe ? withImageUrl(recipe) : null,
         };
       })
     );
@@ -49,9 +39,7 @@ export const add = mutation({
     rating: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
-
+    const userId = await requireAuth(ctx);
     const cookedAt = args.cookedAt ?? Date.now();
 
     // Update the recipe's lastCookedAt field
@@ -74,24 +62,16 @@ export const update = mutation({
     rating: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
-
+    await requireAuth(ctx);
     const { id, ...updates } = args;
-    const filteredUpdates = Object.fromEntries(
-      Object.entries(updates).filter(([, v]) => v !== undefined)
-    );
-
-    await ctx.db.patch(id, filteredUpdates);
+    await ctx.db.patch(id, filterUndefinedValues(updates));
   },
 });
 
 export const remove = mutation({
   args: { id: v.id("cookingHistory") },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
-
+    await requireAuth(ctx);
     await ctx.db.delete(args.id);
   },
 });
