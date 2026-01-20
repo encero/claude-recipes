@@ -18,41 +18,45 @@ RUN bun run build
 # Production stage - Node.js Alpine with nginx for Convex deploy support
 FROM node:22-alpine AS production
 
-# Install nginx
-RUN apk add --no-cache nginx
+# Install nginx and setup directories (rarely changes - good for caching)
+RUN apk add --no-cache nginx && \
+    mkdir -p /var/cache/nginx /var/log/nginx /run/nginx /app
 
-# Copy custom nginx config
-COPY nginx.conf /etc/nginx/http.d/default.conf
-
-# Copy built frontend files
-COPY --from=builder /app/dist /usr/share/nginx/html
-
-# Copy Convex functions and config for deployment
-COPY --from=builder /app/convex /app/convex
-COPY --from=builder /app/package.json /app/package.json
-COPY --from=builder /app/node_modules /app/node_modules
-
-# Copy entrypoint script
-COPY docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
-
-# Create nginx directories and set permissions
-RUN mkdir -p /var/cache/nginx /var/log/nginx /run/nginx && \
-    chown -R node:node /usr/share/nginx/html && \
-    chown -R node:node /var/cache/nginx && \
-    chown -R node:node /var/log/nginx && \
-    chown -R node:node /run/nginx && \
-    chown -R node:node /app
+# Install convex CLI globally (pin version for reproducible builds)
+ARG CONVEX_VERSION=1.31.5
+RUN npm install -g convex@${CONVEX_VERSION} && \
+    npm cache clean --force
 
 WORKDIR /app
 
-# Expose port
+# Copy package.json for production dependency installation
+COPY --from=builder /app/package.json ./
+
+# Install production dependencies only (needed for convex deploy to resolve imports)
+# This excludes devDependencies like eslint, typescript, vite, etc.
+RUN npm install --omit=dev && \
+    npm cache clean --force
+
+# Copy nginx config (changes occasionally)
+COPY nginx.conf /etc/nginx/http.d/default.conf
+
+# Copy entrypoint script (changes occasionally)
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
+# Copy built frontend files (changes with each build)
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Copy Convex functions for deployment (changes with each build)
+COPY --from=builder /app/convex /app/convex
+
+# Set permissions in a single layer
+RUN chown -R node:node /usr/share/nginx/html /var/cache/nginx /var/log/nginx /run/nginx /app
+
 EXPOSE 80
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:80/ || exit 1
 
-# Use entrypoint to sync Convex and inject env vars at runtime
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["nginx", "-g", "daemon off;"]
