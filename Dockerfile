@@ -27,8 +27,10 @@ ARG CONVEX_VERSION=1.31.5
 RUN npm install -g convex@${CONVEX_VERSION} && \
     npm cache clean --force
 
+WORKDIR /app
+
 # Copy package.json for production dependency installation
-COPY --from=builder /app/package.json /app/package.json
+COPY --from=builder /app/package.json ./
 
 # Install production dependencies only (needed for convex deploy to resolve imports)
 # This excludes devDependencies like eslint, typescript, vite, etc.
@@ -50,8 +52,6 @@ COPY --from=builder /app/convex /app/convex
 
 # Set permissions in a single layer
 RUN chown -R node:node /usr/share/nginx/html /var/cache/nginx /var/log/nginx /run/nginx /app
-
-WORKDIR /app
 
 EXPOSE 80
 
