@@ -4,7 +4,7 @@ set -e
 # Sync Convex cloud with the deployed version (runs once on container start)
 if [ -n "$CONVEX_DEPLOY_KEY" ]; then
   echo "Syncing Convex functions to cloud..."
-  npx convex deploy --yes 2>&1 || {
+  convex deploy --yes 2>&1 || {
     echo "WARNING: Convex deploy failed. Container will continue starting."
     echo "Check your CONVEX_DEPLOY_KEY and network connectivity."
   }
