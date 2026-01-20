@@ -22,10 +22,17 @@ FROM node:22-alpine AS production
 RUN apk add --no-cache nginx && \
     mkdir -p /var/cache/nginx /var/log/nginx /run/nginx /app
 
-# Install only convex CLI globally (pin version for reproducible builds)
-# This layer is cached until convex version changes
+# Install convex CLI globally (pin version for reproducible builds)
 ARG CONVEX_VERSION=1.31.5
 RUN npm install -g convex@${CONVEX_VERSION} && \
+    npm cache clean --force
+
+# Copy package.json for production dependency installation
+COPY --from=builder /app/package.json /app/package.json
+
+# Install production dependencies only (needed for convex deploy to resolve imports)
+# This excludes devDependencies like eslint, typescript, vite, etc.
+RUN npm install --omit=dev && \
     npm cache clean --force
 
 # Copy nginx config (changes occasionally)
