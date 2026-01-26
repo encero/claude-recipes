@@ -15,43 +15,18 @@ COPY . .
 # Build the app (no env vars needed - placeholder will be replaced at runtime)
 RUN bun run build
 
-# Production stage - Node.js Alpine with nginx for Convex deploy support
-FROM node:22-alpine AS production
+# Production stage - lightweight nginx for serving static files
+FROM nginx:alpine AS production
 
-# Install nginx and setup directories (rarely changes - good for caching)
-RUN apk add --no-cache nginx && \
-    mkdir -p /var/cache/nginx /var/log/nginx /run/nginx /app
+# Copy nginx config
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Install convex CLI globally (pin version for reproducible builds)
-ARG CONVEX_VERSION=1.31.5
-RUN npm install -g convex@${CONVEX_VERSION} && \
-    npm cache clean --force
-
-WORKDIR /app
-
-# Copy package.json for production dependency installation
-COPY --from=builder /app/package.json ./
-
-# Install production dependencies only (needed for convex deploy to resolve imports)
-# This excludes devDependencies like eslint, typescript, vite, etc.
-RUN npm install --omit=dev && \
-    npm cache clean --force
-
-# Copy nginx config (changes occasionally)
-COPY nginx.conf /etc/nginx/http.d/default.conf
-
-# Copy entrypoint script (changes occasionally)
+# Copy entrypoint script
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
-# Copy built frontend files (changes with each build)
+# Copy built frontend files
 COPY --from=builder /app/dist /usr/share/nginx/html
-
-# Copy Convex functions for deployment (changes with each build)
-COPY --from=builder /app/convex /app/convex
-
-# Set permissions in a single layer
-RUN chown -R node:node /usr/share/nginx/html /var/cache/nginx /var/log/nginx /run/nginx /app
 
 EXPOSE 80
 
